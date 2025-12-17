@@ -2413,6 +2413,8 @@ MonoBehaviour:
   - {fileID: 460864271}
   - {fileID: 831358345}
   - {fileID: 1670777575}
+  submitAnswerButton: {fileID: 0}
+  answerInputField: {fileID: 0}
 --- !u!1 &308252050
 GameObject:
   m_ObjectHideFlags: 0
@@ -3674,7 +3676,19 @@ MonoBehaviour:
       m_Calls: []
   m_OnValueChanged:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 275919346}
+        m_TargetAssemblyTypeName: 
+        m_MethodName: 
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: 
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
   m_CaretColor: {r: 0.19607843, g: 0.19607843, b: 0.19607843, a: 1}
   m_CustomCaretColor: 0
   m_SelectionColor: {r: 0.65882355, g: 0.80784315, b: 1, a: 0.7529412}
@@ -14736,7 +14750,7 @@ GameObject:
   - component: {fileID: 1709132428}
   - component: {fileID: 1709132427}
   m_Layer: 5
-  m_Name: ApplyButton
+  m_Name: SubmitAnswerButton
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -14805,7 +14819,19 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 1709132428}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 911527005}
+        m_TargetAssemblyTypeName: DengonGameManager, Assembly-CSharp
+        m_MethodName: OnClickAnswerCompleteButton
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!114 &1709132428
 MonoBehaviour:
   m_ObjectHideFlags: 0

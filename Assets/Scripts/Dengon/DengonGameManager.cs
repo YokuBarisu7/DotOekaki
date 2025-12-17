@@ -26,11 +26,14 @@ public class DengonGameManager : MonoBehaviourPunCallbacks
     public int drawingTime; // お絵かき時間
     public int answerTime; // 回答時間
     [SerializeField] float timeRemaining;
+    private Coroutine timerCoroutine;
+    private bool timerStopped;
     private bool gameStarted;
     List<int> myOrderList; // 自分の順番リスト
     [SerializeField] bool isDrawingPhase; // お絵かきフェーズか回答フェーズかどうか
     [SerializeField] bool isGameFinished;
     int currentOwnerID;
+    HashSet<int> answerCompletedPlayers = new HashSet<int>();
 
     [SerializeField] Text debugText;
 
@@ -239,17 +242,34 @@ public class DengonGameManager : MonoBehaviourPunCallbacks
     private void StartTimerRPC(double startTime, int time)
     {
         if (isGameFinished) return; // ゲーム終了していたら無視
+
+        timerStopped = false;
+
+        if (timerCoroutine != null)
+        {
+            StopCoroutine(timerCoroutine);
+            timerCoroutine = null;
+        }
+
         isDrawingPhase = !isDrawingPhase; // フェーズ切り替え
+        dengonUIManager.SetAnswerPhase(!isDrawingPhase);
         timeRemaining = time;
-        StartCoroutine(TimerCoroutine((float)startTime, time));
+
+        if (PhotonNetwork.IsMasterClient && !isDrawingPhase)
+        {
+            answerCompletedPlayers.Clear(); // 回答フェーズ開始時に回答完了プレイヤーリストをリセット
+        }
+
+        timerCoroutine = StartCoroutine(TimerCoroutine((float)startTime, time));
+
     }
 
     private IEnumerator TimerCoroutine(float startTime, int time)
     {
-        float endTime = startTime + time;
-        while (timeRemaining > 0)
+        double endTime = startTime + time;
+        while (timeRemaining > 0 && !timerStopped)
         {
-            timeRemaining = endTime - (float)(PhotonNetwork.Time);
+            timeRemaining = (float)(endTime - PhotonNetwork.Time);
             if (timeRemaining < 0) timeRemaining = 0;
             if (isDrawingPhase)
             {
@@ -261,6 +281,12 @@ public class DengonGameManager : MonoBehaviourPunCallbacks
             }
             yield return null;
         }
+
+        timerCoroutine = null;
+
+        if (timerStopped) yield break; // タイマー停止中なら終了
+
+        timerStopped = true;
 
         if (PhotonNetwork.IsMasterClient)
         {
@@ -282,6 +308,33 @@ public class DengonGameManager : MonoBehaviourPunCallbacks
         answerTime = time2;
     }
 
+    public void OnClickAnswerCompleteButton()
+    {
+        string answer = dengonUIManager.GetAnswerText();
+        if (string.IsNullOrWhiteSpace(answer)) return;
+
+        // ★提出ロック
+        dengonUIManager.LockAnswerSubmission();
+
+        photonView.RPC("ReportAnswerCompletion", RpcTarget.MasterClient, PhotonNetwork.LocalPlayer.ActorNumber);
+    }
+
+    [PunRPC]
+    private void ReportAnswerCompletion(int actorNumber)
+    {
+        if (!PhotonNetwork.IsMasterClient || isDrawingPhase || isGameFinished)
+        {
+            return;
+        }
+
+        answerCompletedPlayers.Add(actorNumber);
+
+        if (answerCompletedPlayers.Count >= PhotonNetwork.CurrentRoom.PlayerCount)
+        {
+            ForceFinishAnswerPhaseEarly();
+        }
+    }
+
     [PunRPC]
     private void SetGamePlay()
     {
@@ -291,7 +344,8 @@ public class DengonGameManager : MonoBehaviourPunCallbacks
         }
         currentRound++;
         dengonUIManager.Initialize(); // UIリセット
-        answerInputField.text = ""; // 回答欄リセット
+
+        dengonUIManager.ResetAnswerSubmission();
     }
 
     [PunRPC]
@@ -359,13 +413,39 @@ public class DengonGameManager : MonoBehaviourPunCallbacks
         photonView.RPC("StartTimerRPC", RpcTarget.All, PhotonNetwork.Time, drawingTime);
     }
 
+    private void ForceFinishAnswerPhaseEarly()
+    {
+        if (!PhotonNetwork.IsMasterClient || timerStopped)
+        {
+            return;
+        }
+
+        timerStopped = true;
+        photonView.RPC("StopCurrentTimer", RpcTarget.All);
+        AnswerRoundFinished();
+    }
+
+    [PunRPC]
+    private void StopCurrentTimer()
+    {
+        timerStopped = true;
+        if (timerCoroutine != null)
+        {
+            StopCoroutine(timerCoroutine);
+            timerCoroutine = null;
+        }
+        timeRemaining = 0;
+    }
+
     [PunRPC]
     private void SendAnswer()
-    { 
+    {
         int nextActorNumber = myOrderList[currentRound];
-        Photon.Realtime.Player nextPlayer = PhotonNetwork.CurrentRoom.GetPlayer(nextActorNumber);
-        photonView.RPC("ReceiveAnswer", nextPlayer, answerInputField.text, currentOwnerID);
-        photonView.RPC("ReceiveSavedAnswer", RpcTarget.MasterClient, answerInputField.text, currentOwnerID);
+        Player nextPlayer = PhotonNetwork.CurrentRoom.GetPlayer(nextActorNumber);
+
+        string answer = dengonUIManager.GetAnswerText();
+        photonView.RPC("ReceiveAnswer", nextPlayer, answer, currentOwnerID);
+        photonView.RPC("ReceiveSavedAnswer", RpcTarget.MasterClient, answer, currentOwnerID);
     }
 
     [PunRPC]
@@ -413,7 +493,6 @@ public class DengonGameManager : MonoBehaviourPunCallbacks
     [SerializeField] GameObject dengonPicturePrefab; //結果表示用のプレハブ
     [SerializeField] GameObject dengonTextPrefab; // 結果表示用の画像プレハブ
     [SerializeField] GameObject arrowPrefab; // 矢印プレハブ
-    [SerializeField] InputField answerInputField;
 
     [System.Serializable]
     public class PictureEntry

@@ -36,6 +36,11 @@ public class DengonUIManager : MonoBehaviour
     [Header("パネル")]
     [SerializeField] GameObject[] panels;
 
+    [SerializeField] Button submitAnswerButton;
+    [SerializeField] InputField answerInputField;
+    private bool isAnswerPhase = false;
+    private bool hasSubmittedAnswer = false;
+
     Transform parentTransform;
 
 
@@ -51,6 +56,8 @@ public class DengonUIManager : MonoBehaviour
         });
 
         parentTransform = tabs[0].transform.parent;
+
+        RefreshAnswerUI();
     }
 
     public void Initialize()
@@ -105,6 +112,49 @@ public class DengonUIManager : MonoBehaviour
         {
             button.interactable = isInteractable;
         }
+    }
+
+    public void SetAnswerPhase(bool enabled)
+    {
+        isAnswerPhase = enabled;
+        RefreshAnswerUI();
+    }
+
+    public void ResetAnswerSubmission()
+    {
+        hasSubmittedAnswer = false;
+        answerInputField.text = "";
+        RefreshAnswerUI();
+    }
+
+    public void LockAnswerSubmission()
+    {
+        hasSubmittedAnswer = true;
+        RefreshAnswerUI();
+    }
+
+    public string GetAnswerText()
+    {
+        return answerInputField != null ? answerInputField.text : "";
+    }
+
+    private void RefreshAnswerUI()
+    {
+        if (submitAnswerButton == null || answerInputField == null) return;
+
+        if (hasSubmittedAnswer)
+        {
+            // 提出済み：編集不可＆ボタン不可
+            submitAnswerButton.interactable = false;
+            answerInputField.interactable = false;
+            return;
+        }
+
+        // 未提出：回答フェーズ中だけ入力可能、かつ文字がある時だけ押せる
+        bool hasText = !string.IsNullOrWhiteSpace(answerInputField.text);
+
+        answerInputField.interactable = isAnswerPhase;
+        submitAnswerButton.interactable = isAnswerPhase && hasText;
     }
 
     public void OnClickSizeApplyButton()
