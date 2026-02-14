@@ -4,174 +4,190 @@ using static DrawingManager;
 
 public class PreviewGenerator : MonoBehaviour
 {
-    Texture2D previewTexture;
     [SerializeField] RawImage previewPanel;
+    [SerializeField] int initialPreviewWidth;
+    [SerializeField] int initialPreviewHeight;
+
+    Texture2D previewTexture;
     Vector2Int? startPoint = null; // 直線モードの始点
     Vector2Int startPixel; // 円モード、長方形モードの始点
     bool isDrawing = false; // 描画中かどうか
     Color previewColor;
+    Color32[] clearBuffer;
     ToolMode currentPreviewMode;
     int previewBrushSize;
     DrawingUtils drawer;
 
+
     private void Start()
     {
-        int previewWidth = DrawingManager.instance.CanvasWidth;
-        int previewHeight = DrawingManager.instance.CanvasHeight;
+        previewColor = Color.black;
+        previewBrushSize = 1;
+        currentPreviewMode = ToolMode.Pen;
 
-        previewTexture = new Texture2D(previewWidth, previewHeight, TextureFormat.RGBA32, false);
+        CreatePreviewTexture(initialPreviewWidth, initialPreviewHeight);
+
+        DrawingManager.instance.OnColorChanged += HandleColorChanged;
+        DrawingManager.instance.OnBrushSizeChanged += HandleBrushSizeChanged;
+        DrawingManager.instance.OnToolModeChanged += HandleToolModeChanged;
+        DrawingManager.instance.OnFieldSizeChanged += HandleFieldResized;
+    }
+
+    private void CreatePreviewTexture(int width, int height)
+    {
+        if (previewTexture != null)
+        {
+            Destroy(previewTexture);
+            previewTexture = null;
+        }
+
+        previewTexture = new Texture2D(width, height, TextureFormat.RGBA32, false);
         previewTexture.filterMode = FilterMode.Point;
         ClearCanvas();
         previewPanel.texture = previewTexture;
+        drawer = new DrawingUtils(previewTexture, previewColor, previewBrushSize);
     }
 
     private void Update()
     {
-        Vector2 localPoint;
-        RectTransformUtility.ScreenPointToLocalPointInRectangle(previewPanel.rectTransform, Input.mousePosition, null, out localPoint);
+        if (previewTexture == null || drawer == null) return;
 
-        Rect rect = previewPanel.rectTransform.rect;
-        int x = Mathf.FloorToInt((localPoint.x - rect.x) / rect.width * previewTexture.width);
-        int y = Mathf.FloorToInt((localPoint.y - rect.y) / rect.height * previewTexture.height);
+        if (!TryGetMouseLocalPoint(out var localPoint)) return;
 
-        previewColor = DrawingManager.instance.drawColor;
-        previewBrushSize = DrawingManager.instance.brushSize;
-        currentPreviewMode = DrawingManager.instance.currentMode;
-        drawer = new DrawingUtils(previewTexture, previewColor, previewBrushSize);
-
-        if (Input.GetMouseButtonDown(0))
+        switch (currentPreviewMode)
         {
-            if (currentPreviewMode == ToolMode.Circle || currentPreviewMode == ToolMode.Rectangle)
-            {
-                if (!IsInsideCanvas(localPoint))
-                {
-                    return;
-                }
-                Vector2Int pixelPos = new Vector2Int(x, y);
-                // 始点を設定
-                if (!isDrawing)
-                {
-                    startPixel = pixelPos;
-                    isDrawing = true;
-                }
-            }
-        }
-
-        if (IsInsideCanvas(localPoint))
-        {
-            if (currentPreviewMode == ToolMode.Line)
-            {
-                if (isDrawing)
-                {
-                    Vector2Int endPoint = new Vector2Int(x, y);
-                    DrawShape(startPoint.Value, endPoint);
-                }
-            }
-        }
-
-        if (Input.GetMouseButton(0))
-        {
-            if (currentPreviewMode == ToolMode.Circle || currentPreviewMode == ToolMode.Rectangle)
-            {
-                if (isDrawing)
-                { 
-                    Vector2Int endPixel = new Vector2Int(x, y);
-                    DrawShape(startPixel, endPixel);
-                }
-            }
-        }
-
-        if (Input.GetMouseButtonUp(0))
-        {
-            if (currentPreviewMode == ToolMode.Line)
-            {
-                if (!isDrawing)
-                {
-                    Vector2Int pixelPos = new Vector2Int(x, y);
-                    if (x < 0 || x >= previewTexture.width || y < 0 || y >= previewTexture.height)
-                    {
-                        return;
-                    }
-                    DrawPoint(pixelPos);
-                    startPoint = pixelPos;
-                    isDrawing = true;
-                }
-                else
-                {
-                    if (!IsInsideCanvas(localPoint))
-                    {
-                        return;
-                    }
-                    ClearCanvas();
-                    isDrawing = false;
-                }
-            }
-            else if (currentPreviewMode == ToolMode.Circle || currentPreviewMode == ToolMode.Rectangle)
-            {
-                if (isDrawing)
-                {
-                    ClearCanvas();
-                    isDrawing = false;
-                }
-            }
+            case ToolMode.Line:
+                UpdateLine(localPoint);
+                break;
+            case ToolMode.Circle:
+            case ToolMode.Rectangle:
+                UpdateShapeDrag(localPoint);
+                break;
+            default:
+                if (isDrawing) CancelPreview();
+                break;
         }
     }
 
-
-    private void DrawPoint(Vector2Int position)
+    private bool TryGetMouseLocalPoint(out Vector2 localPoint)
     {
-        drawer.DrawPoint(position);
-        previewTexture.Apply();
+        return RectTransformUtility.ScreenPointToLocalPointInRectangle(
+            previewPanel.rectTransform,
+            Input.mousePosition,
+            null,
+            out localPoint
+            );
+    }
+
+    private bool TryGetPixelPos(Vector2 localPoint, out Vector2Int pixelPos)
+    {
+        pixelPos = default;
+        if (!IsInsideCanvas(localPoint)) return false;
+
+        Rect rect = previewPanel.rectTransform.rect;
+        if (rect.width <= 0 || rect.height <= 0) return false;
+
+        int x = Mathf.FloorToInt((localPoint.x - rect.x) / rect.width * previewTexture.width);
+        int y = Mathf.FloorToInt((localPoint.y - rect.y) / rect.height * previewTexture.height);
+
+        // 範囲クランプ（外を触っても落ちないように）
+        x = Mathf.Clamp(x, 0, previewTexture.width - 1);
+        y = Mathf.Clamp(y, 0, previewTexture.height - 1);
+
+        pixelPos = new Vector2Int(x, y);
+        return true;
+    }
+
+    private void UpdateLine(Vector2 localPoint)
+    {
+        if (Input.GetMouseButtonUp(0))
+        {
+            if (!IsInsideCanvas(localPoint)) return;
+            if (!TryGetPixelPos(localPoint, out var pixelPos)) return;
+
+            if (!isDrawing)
+            {
+                startPoint = pixelPos;
+                isDrawing = true;
+                return;
+            }
+
+            CancelPreview();
+        }
+
+        if (isDrawing && startPoint.HasValue)
+        {
+            if (!TryGetPixelPos(localPoint, out var endPoint)) return;
+            DrawShape(startPoint.Value, endPoint);
+        }
+    }
+
+    private void UpdateShapeDrag(Vector2 localPoint)
+    {
+        if (Input.GetMouseButtonDown(0) && IsInsideCanvas(localPoint))
+        {
+            // 始点を設定
+            if (!TryGetPixelPos(localPoint, out var pixelPos)) return;
+            startPixel = pixelPos;
+            isDrawing = true;
+        }
+
+        if (Input.GetMouseButton(0) && isDrawing)
+        {
+            if (!TryGetPixelPos(localPoint, out var endPixel)) return;
+            DrawShape(startPixel, endPixel);
+        }
+
+        if (Input.GetMouseButtonUp(0) && isDrawing)
+        {
+            ClearCanvas();
+            isDrawing = false;
+        }
     }
 
     private void DrawShape(Vector2Int start, Vector2Int end)
     {
+        ClearCanvas();
         if (currentPreviewMode == ToolMode.Line)
         {
-            DrawLine(start, end);
+            drawer.DrawLine(start, end);
         }
         else if (currentPreviewMode == ToolMode.Circle)
         {
-            DrawCircle(start, end);
+            drawer.DrawCircle(start, end);
         }
         else if (currentPreviewMode == ToolMode.Rectangle)
         {
-            DrawRectangle(start, end);
+            drawer.DrawRectangle(start, end);
         }
-    }
-
-    // Bresenhamの直線アルゴリズム
-    private void DrawLine(Vector2Int start, Vector2Int end)
-    {
-        ClearCanvas();
-        drawer.DrawLine(start, end);
         previewTexture.Apply();
     }
 
-    // Bresenhamの楕円アルゴリズム
-    private void DrawCircle(Vector2Int start, Vector2Int end)
+    private void EnsureClearBuffer()
     {
-        ClearCanvas();
-        drawer.DrawCircle(start, end);
-        previewTexture.Apply();
-    }
-
-    private void DrawRectangle(Vector2Int start, Vector2Int end)
-    {
-        ClearCanvas();
-        drawer.DrawRectangle(start, end);
-        previewTexture.Apply();
+        int len = previewTexture.width * previewTexture.height;
+        if (clearBuffer == null || clearBuffer.Length != len)
+        {
+            clearBuffer = new Color32[len];
+            var t = new Color32(0, 0, 0, 0);
+            for (int i = 0; i < len; i++) clearBuffer[i] = t;
+        }
     }
 
     private void ClearCanvas()
     {
-        Color[] colors = new Color[previewTexture.width * previewTexture.height];
-        for (int i = 0; i < colors.Length; i++)
-        {
-            colors[i] = new Color(0, 0, 0, 0);
-        }
-        previewTexture.SetPixels(colors);
+        if (previewTexture == null) return;
+
+        EnsureClearBuffer();
+        previewTexture.SetPixels32(clearBuffer);
         previewTexture.Apply();
+    }
+
+    private void CancelPreview()
+    {
+        isDrawing = false;
+        startPoint = null;
+        ClearCanvas();
     }
 
     private bool IsInsideCanvas(Vector2 localPoint)
@@ -179,5 +195,33 @@ public class PreviewGenerator : MonoBehaviour
         Rect rect = previewPanel.rectTransform.rect;
         return localPoint.x >= rect.x && localPoint.x <= rect.x + rect.width
             && localPoint.y >= rect.y && localPoint.y <= rect.y + rect.height;
+    }
+
+    private void HandleColorChanged(Color c)
+    {
+        previewColor = c;
+        if (previewTexture != null)
+            drawer = new DrawingUtils(previewTexture, previewColor, previewBrushSize);
+    }
+
+    private void HandleBrushSizeChanged(int size)
+    {
+        previewBrushSize = size;
+        if (previewTexture != null)
+            drawer = new DrawingUtils(previewTexture, previewColor, previewBrushSize);
+    }
+
+    private void HandleToolModeChanged(ToolMode mode)
+    {
+        currentPreviewMode = mode;
+
+        // 途中状態は全部キャンセル（モード跨ぎバグ対策）
+        CancelPreview();
+    }
+
+    private void HandleFieldResized(int width, int height)
+    {
+        CreatePreviewTexture(width, height);
+        CancelPreview();
     }
 }

@@ -2297,7 +2297,7 @@ GameObject:
   - component: {fileID: 186723021}
   - component: {fileID: 186723020}
   m_Layer: 5
-  m_Name: NoButton
+  m_Name: Button (Legacy) (1)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -8112,7 +8112,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: "\u30D7\u30EC\u30A4\u30E4\u30FC\u540D"
+  m_Text: "\u30D7\u30EC\u30A4\u30E4\u30FC\u306E\u540D\u524D"
 --- !u!222 &624164627
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -25096,7 +25096,7 @@ GameObject:
   - component: {fileID: 2127964671}
   - component: {fileID: 2127964670}
   m_Layer: 5
-  m_Name: YesButton
+  m_Name: Button (Legacy)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

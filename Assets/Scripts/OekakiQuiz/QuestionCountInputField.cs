@@ -1,3 +1,4 @@
+using System;
 using System.Text.RegularExpressions;
 using UnityEngine;
 using UnityEngine.UI;
@@ -7,6 +8,8 @@ public class QuestionCountInputField : MonoBehaviour
     [SerializeField] InputField inputField;
     [SerializeField] bool isError;
     public bool IsError => isError;
+
+    public event System.Action OnStateChanged;
 
     private void Start()
     {
@@ -44,5 +47,6 @@ public class QuestionCountInputField : MonoBehaviour
         {
             isError = true;
         }
+        OnStateChanged?.Invoke();
     }
 }

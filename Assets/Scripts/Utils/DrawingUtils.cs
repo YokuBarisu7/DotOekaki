@@ -1,8 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Rendering;
 using UnityEngine.UI;
-using UnityEngine.UIElements;
 
 public class DrawingUtils
 {
@@ -167,32 +165,40 @@ public class DrawingUtils
         int x = Mathf.FloorToInt((position.x - rect.x) / rect.width * texture.width);
         int y = Mathf.FloorToInt((position.y - rect.y) / rect.height * texture.height);
 
-        Color targetColor = texture.GetPixel(x, y);
-        // クリックした場所の色と塗りつぶし色が同じ場合は何もしない
-        if (targetColor == color)
-        {
+        FloodFillPixel(x, y);
+    }
+
+    public void FloodFillPixel(int x, int y)
+    {
+        // 範囲外は何もしない（安全）
+        if (x < 0 || x >= texture.width || y < 0 || y >= texture.height)
             return;
-        }
+
+        Color targetColor = texture.GetPixel(x, y);
+
+        // クリックした場所の色と塗りつぶし色が同じ場合は何もしない
+        if (targetColor == color) return;
 
         Queue<Vector2Int> pixelQueue = new Queue<Vector2Int>();
         pixelQueue.Enqueue(new Vector2Int(x, y));
 
         while (pixelQueue.Count > 0)
         {
-            Vector2Int pos = pixelQueue.Dequeue();
+            Vector2Int p = pixelQueue.Dequeue();
 
-            if (pos.x < 0 || pos.x >= texture.width || pos.y < 0 || pos.y >= texture.height)
+            if (p.x < 0 || p.x >= texture.width || p.y < 0 || p.y >= texture.height)
                 continue;
 
-            if (texture.GetPixel(pos.x, pos.y) != targetColor)
+            if (texture.GetPixel(p.x, p.y) != targetColor)
                 continue;
 
-            texture.SetPixel(pos.x, pos.y, color);
+            texture.SetPixel(p.x, p.y, color);
 
-            pixelQueue.Enqueue(new Vector2Int(pos.x + 1, pos.y));
-            pixelQueue.Enqueue(new Vector2Int(pos.x - 1, pos.y));
-            pixelQueue.Enqueue(new Vector2Int(pos.x, pos.y + 1));
-            pixelQueue.Enqueue(new Vector2Int(pos.x, pos.y - 1));
+            pixelQueue.Enqueue(new Vector2Int(p.x + 1, p.y));
+            pixelQueue.Enqueue(new Vector2Int(p.x - 1, p.y));
+            pixelQueue.Enqueue(new Vector2Int(p.x, p.y + 1));
+            pixelQueue.Enqueue(new Vector2Int(p.x, p.y - 1));
         }
     }
+
 }

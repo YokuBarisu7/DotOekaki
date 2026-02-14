@@ -4,116 +4,131 @@ using UnityEngine.EventSystems;
 
 public class SVMapOff : MonoBehaviour, IPointerDownHandler, IDragHandler
 {
-    [SerializeField] RawImage svRawImage; // SVマップのRawImage
     [SerializeField] RectTransform svCursor; // SV選択カーソル
     [SerializeField] Image svCursorImage;  // 選択した色の表示
 
-    Texture2D spectrumTexture;
-    RectTransform svRawImageRect;
-    Color selectedColor;
+    [SerializeField] int texSize = 256;
 
+    RawImage svRawImage;
+    Texture2D spectrumTexture;
+    RectTransform svRect;
+    Color32[] pixels;
+
+    float hue;
     public float s;
     public float v;
 
     void Start()
     {
-        // RawImageのRectTransformを取得
-        svRawImageRect = svRawImage.GetComponent<RectTransform>();
+        svRawImage = GetComponent<RawImage>();
+        svRect = svRawImage.rectTransform;
 
         // カラースペクトラム用のTexture2Dを作成
-        CreateSpectrumTexture(0f);
-        svRawImage.texture = spectrumTexture;
-
-        // 初期値を設定
-        s = 1f;
-        v = 1f;
-        svCursorImage.color = Color.red;
-    }
-
-    // スペクトラム用のTexture2Dを作成
-    private void CreateSpectrumTexture(float hue)
-    {
-        int width = 256;  // 彩度 (S) の範囲（横軸）
-        int height = 256; // 明度 (V) の範囲（縦軸）
-
-        spectrumTexture = new Texture2D(width, height);
-
-        for (int y = 0; y < height; y++)
+        spectrumTexture = new Texture2D(texSize, texSize, TextureFormat.RGBA32, false)
         {
-            for (int x = 0; x < width; x++)
-            {
-                // 明度（V）と彩度（S）の値を正規化
-                float s = (float)x / width;
-                float v = (float)y / height;
+            filterMode = FilterMode.Bilinear,
+            wrapMode = TextureWrapMode.Clamp
+        };
 
-                // 色相は常に一定
-                Color color = HsvToRgb(hue, s, v);
+        pixels = new Color32[texSize * texSize];
 
-                // ピクセルを設定
-                spectrumTexture.SetPixel(x, y, color);
-            }
-        }
-
-        spectrumTexture.Apply();  // 変更を適用
-    }
-
-    public void UpdateSpectrumTexture(float hue)
-    {
-        CreateSpectrumTexture(hue);
         svRawImage.texture = spectrumTexture;
+
+        // 初期値の設定
+        SetHue(0f);
+        SetSV(1f, 1f, true);
     }
 
-    // HSV → RGB 変換
-    private Color HsvToRgb(float h, float s, float v)
+    private void OnDestroy()
     {
-        return Color.HSVToRGB(h, s, v);
+        if (spectrumTexture != null ) Destroy(spectrumTexture);
+    }
+
+    // HueSliderから呼ぶ
+    public void SetHue(float newHue)
+    {
+        hue = Mathf.Repeat(newHue, 1f);
+        RedrawSpectrum();
+        UpdateCursorColor();
+    }
+
+    private void SetSV(float newS, float newV, bool moveCursor)
+    {
+        s = Mathf.Clamp01(newS);
+        v = Mathf.Clamp01(newV);
+        UpdateCursorColor();
+
+        if (moveCursor)
+        {
+            Rect rect = svRect.rect;
+            float x = Mathf.Lerp(rect.xMin, rect.xMax, s);
+            float y = Mathf.Lerp(rect.yMin, rect.yMax, v);
+            svCursor.anchoredPosition = new Vector2(x, y);
+        }
     }
 
     // カラースペクトラムをクリックした時に色を選択
     public void OnPointerDown(PointerEventData eventData)
     {
-        UpdateSelectedColor(eventData);
-        DrawingManagerOff.instance.ChangeColor(selectedColor);
+        UpdateSVByPointer(eventData);
+        DrawingManagerOff.instance?.ChangeColor(GetSelectedColor());
     }
 
     // カラースペクトラムをドラッグした時に色を選択
     public void OnDrag(PointerEventData eventData)
     {
-        UpdateSelectedColor(eventData);
-        DrawingManagerOff.instance.ChangeColor(selectedColor);
+        UpdateSVByPointer(eventData);
+        DrawingManagerOff.instance?.ChangeColor(GetSelectedColor());
     }
 
-    // クリック位置に基づいて色を更新
-    public void UpdateSelectedColor(PointerEventData eventData)
+    private void UpdateSVByPointer(PointerEventData e)
     {
         Vector2 localPoint;
         RectTransformUtility.ScreenPointToLocalPointInRectangle(
-            svRawImageRect, eventData.position, eventData.pressEventCamera, out localPoint);
+            svRect, e.position, e.pressEventCamera, out localPoint);
 
-        // SVマップの範囲に収める
-        Rect rect = svRawImageRect.rect;
+        Rect rect = svRect.rect;
         localPoint.x = Mathf.Clamp(localPoint.x, rect.xMin, rect.xMax);
         localPoint.y = Mathf.Clamp(localPoint.y, rect.yMin, rect.yMax);
 
-        // 色を選択
-        s = Mathf.InverseLerp(rect.xMin, rect.xMax, localPoint.x); // 彩度
-        v = Mathf.InverseLerp(rect.yMin, rect.yMax, localPoint.y); // 明度
-
-        // テクスチャの対応するピクセルを取得
-        selectedColor = spectrumTexture.GetPixel(
-            Mathf.FloorToInt(s * (spectrumTexture.width - 1)),
-            Mathf.FloorToInt(v * (spectrumTexture.height - 1))
-        );
-
-        // 選択した色を表示
-        svCursorImage.color = selectedColor;
+        s = Mathf.InverseLerp(rect.xMin, rect.xMax, localPoint.x);
+        v = Mathf.InverseLerp(rect.yMin, rect.yMax, localPoint.y);
 
         svCursor.anchoredPosition = localPoint;
+        UpdateCursorColor();
+    }
+
+    Color GetSelectedColor()
+    {
+        return Color.HSVToRGB(hue, s, v);
     }
 
     // カーソルの色を更新
-    public void UpdateCursorColor(Color color)
+    private void UpdateCursorColor()
     {
-        svCursorImage.color = color;
+        svCursorImage.color = GetSelectedColor();
+    }
+
+    private void RedrawSpectrum()
+    {
+        // y=0 を暗い側にするか明るい側にするかは好み。
+        // ここでは v = y/(N-1) にして "上が明るい" になるようにするなら v を反転してもOK。
+        int w = texSize;
+        int h = texSize;
+
+        for (int y = 0; y < h; y++)
+        {
+            float vv = (float)y / (h - 1);
+            int row = y * w;
+            for (int x = 0; x < w; x++)
+            {
+                float ss = (float)x / (w - 1);
+                Color c = Color.HSVToRGB(hue, ss, vv);
+                pixels[row + x] = (Color32)c;
+            }
+        }
+
+        spectrumTexture.SetPixels32(pixels);
+        spectrumTexture.Apply(false, false);
     }
 }

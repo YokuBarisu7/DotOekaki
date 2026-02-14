@@ -9,6 +9,8 @@ public class SizeInputField : MonoBehaviour
     [SerializeField] bool isError;
     public bool IsError => isError;
 
+    public event System.Action OnStateChanged;
+
     private void Start()
     {
         inputField.contentType = InputField.ContentType.IntegerNumber;
@@ -45,6 +47,8 @@ public class SizeInputField : MonoBehaviour
         {
             isError = true;
         }
+
+        OnStateChanged?.Invoke();
     }
 
     public void IncrementValue()

@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-public class GridGenerator : MonoBehaviour
+public class GridGeneratorOffline : MonoBehaviour
 {
     [SerializeField] RawImage gridPanel;
     [SerializeField] Toggle gridToggle;
@@ -31,13 +31,11 @@ public class GridGenerator : MonoBehaviour
             gridToggle.onValueChanged.AddListener(OnToggle);
             OnToggle(false);
         }
-        else
+        else 
         {
             SetEnabled(false);
         }
         ApplyParams();
-
-        DrawingManager.instance.OnFieldSizeChanged += SetGridCount;
     }
 
     private void OnDestroy()

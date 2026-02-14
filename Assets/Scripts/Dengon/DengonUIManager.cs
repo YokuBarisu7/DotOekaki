@@ -33,13 +33,14 @@ public class DengonUIManager : MonoBehaviour
 
     [Header("タブボタン")]
     [SerializeField] GameObject[] tabs;
-    [Header("パネル")]
+    [Header("タブパネル")]
     [SerializeField] GameObject[] panels;
 
     [SerializeField] Button submitAnswerButton;
     [SerializeField] InputField answerInputField;
     private bool isAnswerPhase = false;
     private bool hasSubmittedAnswer = false;
+    private bool isGameFinished = false;
 
     Transform parentTransform;
 
@@ -127,9 +128,9 @@ public class DengonUIManager : MonoBehaviour
         RefreshAnswerUI();
     }
 
-    public void LockAnswerSubmission()
-    {
-        hasSubmittedAnswer = true;
+    public void SetAnswerLocked(bool locked)
+    { 
+        hasSubmittedAnswer = locked;
         RefreshAnswerUI();
     }
 
@@ -138,24 +139,47 @@ public class DengonUIManager : MonoBehaviour
         return answerInputField != null ? answerInputField.text : "";
     }
 
-    private void RefreshAnswerUI()
+    public void SetGameFinished(bool finished)
+    { 
+        isGameFinished = finished;
+        RefreshAnswerUI() ;
+    }
+
+    public void RefreshAnswerUI()
     {
         if (submitAnswerButton == null || answerInputField == null) return;
 
-        if (hasSubmittedAnswer)
+        // ゲーム終了してる時は操作不可
+        if (isGameFinished)
         {
-            // 提出済み：編集不可＆ボタン不可
-            submitAnswerButton.interactable = false;
             answerInputField.interactable = false;
+            submitAnswerButton.interactable = false;
             return;
         }
 
-        // 未提出：回答フェーズ中だけ入力可能、かつ文字がある時だけ押せる
+        // 回答フェーズ以外はアンサーUIを操作できないようにする
+        if (!isAnswerPhase)
+        {
+            answerInputField.interactable = false;
+            submitAnswerButton.interactable = false;
+            return;
+        }
+
         bool hasText = !string.IsNullOrWhiteSpace(answerInputField.text);
 
-        answerInputField.interactable = isAnswerPhase;
-        submitAnswerButton.interactable = isAnswerPhase && hasText;
+        if (hasSubmittedAnswer)
+        {
+            // ロック中：入力不可、でも解除用にボタンは押せる（回答フェーズ中のみ）
+            answerInputField.interactable = false;
+            submitAnswerButton.interactable = true;
+            return;
+        }
+
+        // 未ロック：回答フェーズ中だけ入力可
+        answerInputField.interactable = true;
+        submitAnswerButton.interactable = hasText;
     }
+
 
     public void OnClickSizeApplyButton()
     {

@@ -840,7 +840,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 84b2432053cacfa46bdf14cebe304faa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  showField: {fileID: 0}
+  showField: {fileID: 109799049}
   showingPanel: {fileID: 479827943}
   gridToggle: {fileID: 896340416}
   gridPanel: {fileID: 1195005861}
@@ -2413,8 +2413,8 @@ MonoBehaviour:
   - {fileID: 460864271}
   - {fileID: 831358345}
   - {fileID: 1670777575}
-  submitAnswerButton: {fileID: 0}
-  answerInputField: {fileID: 0}
+  submitAnswerButton: {fileID: 1709132427}
+  answerInputField: {fileID: 443430882}
 --- !u!1 &308252050
 GameObject:
   m_ObjectHideFlags: 0
@@ -3677,13 +3677,13 @@ MonoBehaviour:
   m_OnValueChanged:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 275919346}
-        m_TargetAssemblyTypeName: 
-        m_MethodName: 
+      - m_Target: {fileID: 275919348}
+        m_TargetAssemblyTypeName: DengonUIManager, Assembly-CSharp
+        m_MethodName: RefreshAnswerUI
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: 
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
           m_IntArgument: 0
           m_FloatArgument: 0
           m_StringArgument: 
@@ -6697,17 +6697,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7b39da4edaa24a74e8aad7f4f49836d5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  dengonUIManager: {fileID: 275919348}
+  dengonShowPanelManager: {fileID: 109799051}
+  dengonThemeGenerator: {fileID: 171822499}
   panels: {fileID: 331537953}
   loadObj: {fileID: 504639941}
   themeText: {fileID: 1447085794}
   drawingTimerText: {fileID: 1373899117}
   answerTimerText: {fileID: 1962610377}
+  submitDrawingButtonText: {fileID: 1165975998}
+  submitAnswerButtonText: {fileID: 1672384012}
   currentRound: 0
-  drawingTime: 180
-  answerTime: 60
   timeRemaining: 0
   isDrawingPhase: 0
   isGameFinished: 0
+  drawingTime: 180
+  answerTime: 60
   debugText: {fileID: 1173031249}
   tabContents:
   - {fileID: 1054196454}
@@ -6719,8 +6724,7 @@ MonoBehaviour:
   dengonPicturePrefab: {fileID: 1815330449466036878, guid: 2bada44c0ba8f8e4186fd9726b767435, type: 3}
   dengonTextPrefab: {fileID: 2548445538692212369, guid: bfc48a1804baf594ea14076645ce8cff, type: 3}
   arrowPrefab: {fileID: 4742569152439618264, guid: 862c0fbdacabaa94089b4e832e8c8d69, type: 3}
-  answerInputField: {fileID: 443430882}
-  reuseSettingButton: {fileID: 1324026637}
+  restartButton: {fileID: 1324026637}
 --- !u!1 &996543216
 GameObject:
   m_ObjectHideFlags: 0
@@ -8526,6 +8530,85 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
+--- !u!1 &1165975996
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1165975997}
+  - component: {fileID: 1165975999}
+  - component: {fileID: 1165975998}
+  m_Layer: 5
+  m_Name: SubmitDrawingButtonText
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &1165975997
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1165975996}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1516368701}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &1165975998
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1165975996}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5f7201a12d95ffc409449d95f23cf332, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Material: {fileID: 0}
+  m_Color: {r: 0.19607843, g: 0.19607843, b: 0.19607843, a: 1}
+  m_RaycastTarget: 1
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_FontData:
+    m_Font: {fileID: 12800000, guid: ff6bec89a2d16984eb2f79793b948607, type: 3}
+    m_FontSize: 40
+    m_FontStyle: 1
+    m_BestFit: 0
+    m_MinSize: 4
+    m_MaxSize: 45
+    m_Alignment: 4
+    m_AlignByGeometry: 0
+    m_RichText: 1
+    m_HorizontalOverflow: 0
+    m_VerticalOverflow: 0
+    m_LineSpacing: 1
+  m_Text: "\u5B8C\u4E86"
+--- !u!222 &1165975999
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1165975996}
+  m_CullTransparentMesh: 1
 --- !u!1 &1173031246
 GameObject:
   m_ObjectHideFlags: 0
@@ -8982,7 +9065,7 @@ GameObject:
   - component: {fileID: 1219894594}
   - component: {fileID: 1219894593}
   m_Layer: 5
-  m_Name: Text (Legacy)
+  m_Name: RestartButtonText
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -9996,7 +10079,7 @@ GameObject:
   - component: {fileID: 1324026640}
   - component: {fileID: 1324026639}
   m_Layer: 5
-  m_Name: ReuseSettingButton
+  m_Name: RestartButton
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -12795,6 +12878,139 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1507598266}
   m_CullTransparentMesh: 1
+--- !u!1 &1516368700
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1516368701}
+  - component: {fileID: 1516368704}
+  - component: {fileID: 1516368703}
+  - component: {fileID: 1516368702}
+  m_Layer: 5
+  m_Name: SubmitDrawingButton
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &1516368701
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1516368700}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 1165975997}
+  m_Father: {fileID: 1560122957}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: 720, y: -480.6}
+  m_SizeDelta: {x: 300, y: 70}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &1516368702
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1516368700}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4e29b1a8efbd4b44bb3f3716e73f07ff, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Navigation:
+    m_Mode: 3
+    m_WrapAround: 0
+    m_SelectOnUp: {fileID: 0}
+    m_SelectOnDown: {fileID: 0}
+    m_SelectOnLeft: {fileID: 0}
+    m_SelectOnRight: {fileID: 0}
+  m_Transition: 1
+  m_Colors:
+    m_NormalColor: {r: 1, g: 1, b: 1, a: 1}
+    m_HighlightedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
+    m_PressedColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 1}
+    m_SelectedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
+    m_DisabledColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 0.5019608}
+    m_ColorMultiplier: 1
+    m_FadeDuration: 0.1
+  m_SpriteState:
+    m_HighlightedSprite: {fileID: 0}
+    m_PressedSprite: {fileID: 0}
+    m_SelectedSprite: {fileID: 0}
+    m_DisabledSprite: {fileID: 0}
+  m_AnimationTriggers:
+    m_NormalTrigger: Normal
+    m_HighlightedTrigger: Highlighted
+    m_PressedTrigger: Pressed
+    m_SelectedTrigger: Selected
+    m_DisabledTrigger: Disabled
+  m_Interactable: 1
+  m_TargetGraphic: {fileID: 1516368703}
+  m_OnClick:
+    m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 911527005}
+        m_TargetAssemblyTypeName: DengonGameManager, Assembly-CSharp
+        m_MethodName: OnClickSubmitDrawingButton
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+--- !u!114 &1516368703
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1516368700}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 1
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Sprite: {fileID: 10905, guid: 0000000000000000f000000000000000, type: 0}
+  m_Type: 1
+  m_PreserveAspect: 0
+  m_FillCenter: 1
+  m_FillMethod: 4
+  m_FillAmount: 1
+  m_FillClockwise: 1
+  m_FillOrigin: 0
+  m_UseSpriteMesh: 0
+  m_PixelsPerUnitMultiplier: 1
+--- !u!222 &1516368704
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1516368700}
+  m_CullTransparentMesh: 1
 --- !u!1 &1528818076
 GameObject:
   m_ObjectHideFlags: 0
@@ -13093,6 +13309,7 @@ RectTransform:
   - {fileID: 407545136}
   - {fileID: 841211582}
   - {fileID: 337156454}
+  - {fileID: 1516368701}
   - {fileID: 1423138278}
   - {fileID: 1447085793}
   - {fileID: 1373899119}
@@ -14580,7 +14797,7 @@ GameObject:
   - component: {fileID: 1672384013}
   - component: {fileID: 1672384012}
   m_Layer: 5
-  m_Name: Text (Legacy)
+  m_Name: SubmitAnswerButtonText
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -14627,10 +14844,10 @@ MonoBehaviour:
       m_Calls: []
   m_FontData:
     m_Font: {fileID: 12800000, guid: ff6bec89a2d16984eb2f79793b948607, type: 3}
-    m_FontSize: 45
+    m_FontSize: 40
     m_FontStyle: 1
     m_BestFit: 0
-    m_MinSize: 10
+    m_MinSize: 4
     m_MaxSize: 45
     m_Alignment: 4
     m_AlignByGeometry: 0
@@ -14774,7 +14991,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 700, y: -481.10004}
-  m_SizeDelta: {x: 200, y: 70}
+  m_SizeDelta: {x: 300, y: 70}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1709132427
 MonoBehaviour:
@@ -14822,7 +15039,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 911527005}
         m_TargetAssemblyTypeName: DengonGameManager, Assembly-CSharp
-        m_MethodName: OnClickAnswerCompleteButton
+        m_MethodName: OnClickSubmitAnswerButton
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}

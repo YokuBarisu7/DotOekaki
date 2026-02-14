@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Photon.Pun;
 using ExitGames.Client.Photon;
 using Photon.Realtime;
+using System.Linq;
 
 public class DengonThemeGenerator : MonoBehaviourPunCallbacks
 {
@@ -11,67 +12,87 @@ public class DengonThemeGenerator : MonoBehaviourPunCallbacks
 
     [SerializeField] int mode; // 0: かんたん、1: ふつう、2: むずかしい
 
+    const string KEY_JSON = "DengonThemesJson";
+    const string KEY_VER = "DengonThemeVersion";
+
     void Start()
     {
         if (PhotonNetwork.IsMasterClient)
         {
             // ホストはスプレッドシートから問題リストを取得し、同期する
-            mode = PlayerPrefs.GetInt("Mode", 0);
-            dengonGoogleSheetLoader.LoadDataFromGoogleSheetDengon(mode, () => {
-                themeList = dengonGoogleSheetLoader.themes;
-                List<DengonTheme> selectedThemes = GetRandomTheme(PhotonNetwork.CurrentRoom.PlayerCount);
-
-                // ルームのカスタムプロパティに保存して全員に同期
-                string serialized = JsonUtility.ToJson(new DengonThemeListWrapper(selectedThemes)); //JSONでシリアライズ
-                Hashtable props = new Hashtable();
-                props["DengonThemeReady"] = serialized;
-                PhotonNetwork.CurrentRoom.SetCustomProperties(props);
-                themeList = selectedThemes;
-            });
+            GenerateAndBroadcastThemes(true);
         }
         else
         {
             // 参加者用
-            if (PhotonNetwork.CurrentRoom.CustomProperties.ContainsKey("DengonThemeReady"))
-            {
-                string serialized = PhotonNetwork.CurrentRoom.CustomProperties["DengonThemeReady"] as string;
-                if (!string.IsNullOrEmpty(serialized))
-                {
-                    DengonThemeListWrapper wrapper = JsonUtility.FromJson<DengonThemeListWrapper>(serialized);
-                    themeList = wrapper.themes;
-
-                    SetThemeReady();
-                    Debug.Log($"お題リストを受け取りました:{PhotonNetwork.LocalPlayer.NickName}");
-                }
-                else
-                {
-                    Debug.LogWarning("DengonThemes の値が null です");
-                }
-            }
+            TryApplyRoomThemes();
         }
     }
 
-    public override void OnRoomPropertiesUpdate(Hashtable propertiesThatChanged)
+    public void RegenerateAndBroadcastThemes()
     {
-        if (propertiesThatChanged.ContainsKey("DengonThemeReady"))
-        {
-            string serialized = propertiesThatChanged["DengonThemeReady"] as string;
-            // デシリアライズして使う
-            DengonThemeListWrapper wrapper = JsonUtility.FromJson<DengonThemeListWrapper>(serialized);
-            themeList = wrapper.themes;
+        if (!PhotonNetwork.IsMasterClient) return;
 
-            SetThemeReady();
-            Debug.Log($"お題リストを受け取りました:{PhotonNetwork.LocalPlayer.NickName}");
-        }
+        GenerateAndBroadcastThemes(false);
+    }
+
+    private void GenerateAndBroadcastThemes(bool isFirst)
+    {
+        mode = PlayerPrefs.GetInt("Mode", 0);
+
+        dengonGoogleSheetLoader.LoadDataFromGoogleSheetDengon(mode, () =>
+        {
+            var pool = dengonGoogleSheetLoader.themes;
+            var selected = GetRandomThemeFrom(pool, PhotonNetwork.PlayerList.Length);
+
+            string json = JsonUtility.ToJson(new DengonThemeListWrapper(selected));
+
+            int nextVer = 1;
+            if (!isFirst &&
+                PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue(KEY_VER, out var vObj) &&
+                vObj is int v)
+            {
+                nextVer = v + 1;
+            }
+
+            var roomProps = new ExitGames.Client.Photon.Hashtable
+            {
+                { KEY_JSON, json },
+                { KEY_VER,  nextVer }
+            };
+            PhotonNetwork.CurrentRoom.SetCustomProperties(roomProps);
+        });
+    }
+
+    private void TryApplyRoomThemes()
+    {
+        if (!PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue(KEY_JSON, out var obj)) return;
+        string json = obj as string;
+        if (string.IsNullOrEmpty(json)) return;
+
+        var wrapper = JsonUtility.FromJson<DengonThemeListWrapper>(json);
+        themeList = wrapper.themes;
+
+        SetThemeReady();
     }
 
     private void SetThemeReady()
     {
-        int index = PhotonNetwork.LocalPlayer.ActorNumber - 1;
+        var ordered = PhotonNetwork.PlayerList.OrderBy(p => p.ActorNumber).ToList();
+        int index = ordered.FindIndex(p => p.ActorNumber == PhotonNetwork.LocalPlayer.ActorNumber);
+        if (index < 0 || index >= themeList.Count) return;
 
         DengonGameManager.instance.SetTheme(themeList[index].theme);
-        Hashtable props = new Hashtable();
-        props["DengonThemeReady"] = true;
+
+        int roomVer = 0;
+        if (PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue(KEY_VER, out var vObj) && vObj is int v)
+            roomVer = v;
+
+        var props = new ExitGames.Client.Photon.Hashtable
+        {
+            { "ThemeReceived", true },
+            { "ThemeVersion", roomVer }
+        };
         PhotonNetwork.LocalPlayer.SetCustomProperties(props);
     }
 
@@ -84,18 +105,26 @@ public class DengonThemeGenerator : MonoBehaviourPunCallbacks
     }
 
     // 重複を許さずにランダムなお題を取得する
-    private List<DengonTheme> GetRandomTheme(int number)
+    private List<DengonTheme> GetRandomThemeFrom(List<DengonTheme> source, int number)
     {
-        // themeListの順番をシャッフル
-        System.Random rng = new System.Random();
-        int n = themeList.Count;
-        while (n > 1)
+        var list = new List<DengonTheme>(source);
+        var rng = new System.Random();
+        for (int n = list.Count; n > 1; n--)
         {
-            int k = rng.Next(n--);
-            DengonTheme temp = themeList[n];
-            themeList[n] = themeList[k];
-            themeList[k] = temp;
+            int k = rng.Next(n);
+            (list[n - 1], list[k]) = (list[k], list[n - 1]);
         }
-        return themeList.GetRange(0, number);
+        return list.GetRange(0, Mathf.Min(number, list.Count));
+    }
+
+
+    // コールバック：ルームプロパティが更新されたとき
+
+    public override void OnRoomPropertiesUpdate(Hashtable changed)
+    {
+        if (changed.ContainsKey(KEY_JSON) || changed.ContainsKey(KEY_VER))
+        {
+            TryApplyRoomThemes();
+        }
     }
 }

@@ -247,11 +247,11 @@ public class GameManager : MonoBehaviourPunCallbacks
         {
             currentTheme = themeGenerator.GetRandomTheme(questionCount - questionCountLeft);
             photonView.RPC("UpdateCurrentTheme", RpcTarget.Others, currentTheme.question);
-            DrawingManager.instance.isDrawable = true;
+            DrawingManager.instance.SetDrawable(true);
         }
         else
         {
-            DrawingManager.instance.isDrawable = false;
+            DrawingManager.instance.SetDrawable(false);
         }
 
         currentQuestionerIndex++;

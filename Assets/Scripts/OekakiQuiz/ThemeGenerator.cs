@@ -1,7 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
 using Photon.Pun;
-using Photon.Realtime;
 
 public class ThemeGenerator : MonoBehaviourPunCallbacks
 {
@@ -84,16 +83,6 @@ public class ThemeGenerator : MonoBehaviourPunCallbacks
     public void SyncIndex(int[] numbers)
     {
         themeListIndex = new List<int>(numbers);
-    }
-
-    // プレイヤーが参加したときに、ホストから問題リストを受け取る
-    public override void OnPlayerPropertiesUpdate(Photon.Realtime.Player targetPlayer, ExitGames.Client.Photon.Hashtable changedProps)
-    {
-        if (changedProps.ContainsKey("SharedQuestions") && !PhotonNetwork.IsMasterClient)
-        {
-            string serializedQuestions = changedProps["SharedQuestions"] as string;
-            themeList = googleSheetLoader.DeserializeQuestions(serializedQuestions);
-        }
     }
 
     // 重複を許さずにランダムなお題を取得する

@@ -27,16 +27,18 @@ public class DotUIManager : MonoBehaviour
     [SerializeField] LimitTimeInputField limitTimeInputField;
     [SerializeField] Image currentColor;
     [SerializeField] Toggle mekakushiToggle;
-
-    [SerializeField] bool isBlind;
-
     [SerializeField] GameObject sizeChangerPanel;
     [SerializeField] GameObject colorSpectrum;
     [SerializeField] GameObject backPanel;
+    [SerializeField] ColorPalette palette;
+
+    DrawingManager dm;
 
 
     private void Start()
     {
+        TryBind();
+
         backButton1.onClick.AddListener(() =>
         {
             PhotonManager.instance.OnLeaveRoomAndDestroy();
@@ -45,12 +47,29 @@ public class DotUIManager : MonoBehaviour
         {
             PhotonManager.instance.OnLeaveRoomAndDestroy();
         });
+        mekakushiToggle.onValueChanged.AddListener(_ => OnMekakushiToggle());
+    }
+
+    private void TryBind()
+    {
+        if (dm == null) dm = DrawingManager.instance;
+
+        dm.OnDrawableChanged += OnDrawableChanged;
+        dm.OnToolModeChanged += OnToolModeChanged;
+        dm.OnHistoryChanged += OnHistoryChanged;
+        dm.OnHasDrawingChanged += OnHasDrawingChanged;
+        dm.OnColorChanged += OnColorChanged;
+        widthInputField.OnStateChanged += OnSizeInputFieldValueChanged;
+        heightInputField.OnStateChanged += OnSizeInputFieldValueChanged;
+        questionCountInputField.OnStateChanged += OnSettingInputFieldValueChanged;
+        limitTimeInputField.OnStateChanged += OnSettingInputFieldValueChanged;
+
+        RefreshAllUI();
     }
 
     public void Initialize()
     {
         // 初期化処理
-        gridGenerator.InitializeGridToggle();
         sizeChangerPanel.SetActive(false);
         colorSpectrum.SetActive(false);
         backPanel.SetActive(false);
@@ -58,57 +77,43 @@ public class DotUIManager : MonoBehaviour
         DrawingManager.instance.InitializeDrawField();
     }
 
-    private void Update()
+    private void RefreshAllUI()
     {
-        SetActive(dotUI, DrawingManager.instance.isDrawable);
-        SetActive(blindPanel, isBlind);
-        SetActive(penButtonCover, DrawingManager.instance.currentMode == DrawingManager.ToolMode.Pen);
-        SetActive(fillButtonCover, DrawingManager.instance.currentMode == DrawingManager.ToolMode.Fill);
-        SetActive(lineButtonCover, DrawingManager.instance.currentMode == DrawingManager.ToolMode.Line);
-        SetActive(circleButtonCover, DrawingManager.instance.currentMode == DrawingManager.ToolMode.Circle);
-        SetActive(rectangleButtonCover, DrawingManager.instance.currentMode == DrawingManager.ToolMode.Rectangle);
-
-        SetInteractable(undoButton, DrawingManager.instance.undoStackCount > 1);
-        SetInteractable(redoButton, DrawingManager.instance.redoStackCount > 0);
-        SetInteractable(clearButton, DrawingManager.instance.HasDrawing());
-
-        currentColor.color = DrawingManager.instance.drawColor;
-
-        isBlind = mekakushiToggle.isOn;
-
-        if (heightInputField.IsError || widthInputField.IsError)
-        {
-            SetInteractable(sizeApplyButton, false);
-        }
-        else
-        {
-            SetInteractable(sizeApplyButton, true);
-        }
-
-        if (questionCountInputField.IsError || limitTimeInputField.IsError)
-        {
-            SetInteractable(gameRestartButton, false);
-        }
-        else
-        {
-            SetInteractable(gameRestartButton, true);
-        }
+        OnDrawableChanged(dm.IsDrawable);
+        OnToolModeChanged(dm.currentMode);
+        OnHistoryChanged(dm.undoStackCount, dm.redoStackCount);
+        OnHasDrawingChanged(dm.HasDrawingCached);
+        OnColorChanged(dm.DrawColor);
     }
 
-    private void SetActive(GameObject obj, bool isActive)
+    private void OnDrawableChanged(bool drawable)
     {
-        if (obj.activeSelf != isActive)
-        {
-            obj.SetActive(isActive);
-        }
+        SetActive(dotUI, drawable);
     }
 
-    private void SetInteractable(Button button, bool isInteractable)
+    private void OnToolModeChanged(DrawingManager.ToolMode mode)
     {
-        if (button.interactable != isInteractable)
-        {
-            button.interactable = isInteractable;
-        }
+        SetActive(penButtonCover, mode == DrawingManager.ToolMode.Pen);
+        SetActive(fillButtonCover, mode == DrawingManager.ToolMode.Fill);
+        SetActive(lineButtonCover, mode == DrawingManager.ToolMode.Line);
+        SetActive(circleButtonCover, mode == DrawingManager.ToolMode.Circle);
+        SetActive(rectangleButtonCover, mode == DrawingManager.ToolMode.Rectangle);
+    }
+
+    private void OnHistoryChanged(int undoCount, int redoCount)
+    {
+        SetInteractable(undoButton, undoCount > 1);
+        SetInteractable(redoButton, redoCount > 0);
+    }
+
+    private void OnHasDrawingChanged(bool hasDrawing)
+    {
+        SetInteractable(clearButton, hasDrawing);
+    }
+
+    private void OnColorChanged(Color color)
+    {
+        currentColor.color = color;
     }
 
     public void SetRoleText(string name)
@@ -124,101 +129,56 @@ public class DotUIManager : MonoBehaviour
     public void OnClickSizeApplyButton()
     {
         DrawingManager.instance.ResetDrawFieldSize(widthInputField.inputPixelSize, heightInputField.inputPixelSize);
-        if (DrawingManager.instance.CanvasWidth > 50 || DrawingManager.instance.CanvasHeight > 50)
+        gridGenerator.SetGridCount(widthInputField.inputPixelSize, heightInputField.inputPixelSize );
+    }
+
+    public void OnClickUndoButton() => dm.UndoButton();
+    public void OnClickRedoButton() => dm.RedoButton();
+    public void OnClickAllClearButton() => dm.AllClear();
+    public void OnClickColor(int index) => dm.ChangeColor(palette.colors[index]);
+    public void OnClickToolButton(int index) => dm.ChangeMode((DrawingManager.ToolMode)index);
+    public void OnClickEraserButton() => dm.ChangeColor(new Color(0, 0, 0, 0));
+    public void ToggleIsDrawable() => dm.SetDrawable(!dm.IsDrawable);
+
+    public void OnSizeInputFieldValueChanged()
+    {
+        if (heightInputField.IsError || widthInputField.IsError)
         {
-            gridGenerator.ChangeInteractableGridToggle(false);
+            SetInteractable(sizeApplyButton, false);
         }
         else
         {
-            gridGenerator.ChangeInteractableGridToggle(true);
+            SetInteractable(sizeApplyButton, true);
         }
     }
 
-    public void OnClickUndoButton()
+    public void OnSettingInputFieldValueChanged()
     {
-        DrawingManager.instance.UndoButton();
-    }
-
-    public void OnClickRedoButton()
-    {
-        DrawingManager.instance.RedoButton();
-    }
-
-    public void ToggleIsDrawable()
-    { 
-        DrawingManager.instance.isDrawable = !DrawingManager.instance.isDrawable;
-    }
-
-    // ツールボタン
-    public void OnClickToolButton(int index)
-    {
-        switch (index)
+        if (questionCountInputField.IsError || limitTimeInputField.IsError)
         {
-            case 0:
-                DrawingManager.instance.ChangeMode(DrawingManager.ToolMode.Pen);
-                break;
-            case 1:
-                DrawingManager.instance.ChangeMode(DrawingManager.ToolMode.Fill);
-                break;
-            case 2:
-                DrawingManager.instance.ChangeMode(DrawingManager.ToolMode.Line);
-                break;
-            case 3:
-                DrawingManager.instance.ChangeMode(DrawingManager.ToolMode.Circle);
-                break;
-            case 4:
-                DrawingManager.instance.ChangeMode(DrawingManager.ToolMode.Rectangle);
-                break;
+            SetInteractable(gameRestartButton, false);
+        }
+        else
+        {
+            SetInteractable(gameRestartButton, true);
         }
     }
 
-    public void OnClickAllClearButton()
+    private void OnMekakushiToggle() => blindPanel.SetActive(mekakushiToggle.isOn);
+
+    private void SetActive(GameObject obj, bool isActive)
     {
-        DrawingManager.instance.AllClear();
+        if (obj.activeSelf != isActive)
+        {
+            obj.SetActive(isActive);
+        }
     }
 
-    public void OnClickBlack()
+    private void SetInteractable(Button button, bool isInteractable)
     {
-        DrawingManager.instance.ChangeColor(Color.black);
-    }
-    public void OnClickRed()
-    {
-        DrawingManager.instance.ChangeColor(Color.red);
-    }
-    public void OnClickBlue()
-    {
-        DrawingManager.instance.ChangeColor(Color.blue);
-    }
-    public void OnClickGreen()
-    {
-        DrawingManager.instance.ChangeColor(Color.green);
-    }
-    public void OnClickYellow()
-    {
-        DrawingManager.instance.ChangeColor(Color.yellow);
-    }
-    public void OnClickMagenta()
-    {
-        DrawingManager.instance.ChangeColor(Color.magenta);
-    }
-    public void OnClickCyan()
-    {
-        DrawingManager.instance.ChangeColor(Color.cyan);
-    }
-    public void OnClickGray()
-    {
-        DrawingManager.instance.ChangeColor(Color.gray);
-    }
-    public void OnClickBeige()
-    {
-        DrawingManager.instance.ChangeColor(new Color32(246, 184, 148, 255));
-    }
-    public void OnClickWhite() 
-    {
-        DrawingManager.instance.ChangeColor(Color.white);
-    }
-    public void OnClickEraserButton()
-    {
-        DrawingManager.instance.ChangeColor(new Color(0, 0, 0, 0));
+        if (button.interactable != isInteractable)
+        {
+            button.interactable = isInteractable;
+        }
     }
 }
