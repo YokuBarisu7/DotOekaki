@@ -6316,6 +6316,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 955020185095a1c4c85846bd806e3c20, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  lobbyDrawing: {fileID: 1547737342}
   currentPanel: 0
 --- !u!1 &478853566
 GameObject:
@@ -18103,6 +18104,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   rawImage: {fileID: 123687264}
+  CanvasWidth: 192
+  CanvasHeight: 108
   isDrawable: 0
 --- !u!4 &1547737343
 Transform:

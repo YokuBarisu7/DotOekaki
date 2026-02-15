@@ -1,8 +1,11 @@
+using Unity.VisualScripting;
 using UnityEngine;
 
 public class PanelController : MonoBehaviour
 {
     public static PanelController instance;
+
+    [SerializeField] LobbyDrawing lobbyDrawing;
 
     void Awake()
     {
@@ -108,6 +111,14 @@ public class PanelController : MonoBehaviour
             case Panels.DengonSetting:
                 transform.localPosition = new Vector3(-5000, 9000, 0);
                 break;
+        }
+        if (currentPanel == Panels.Lobby)
+        {
+            lobbyDrawing.SetDrawable(true);
+        }
+        else
+        {
+            lobbyDrawing.SetDrawable(false);
         }
     }
 }

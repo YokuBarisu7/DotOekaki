@@ -2,55 +2,47 @@ using UnityEngine;
 using UnityEngine.UI;
 using System.Collections.Generic;
 using Photon.Pun;
+using System.Linq;
 
 public class LobbyDrawing : MonoBehaviourPunCallbacks
 {
-    Texture2D texture;
     [SerializeField] RawImage rawImage;
-    Color drawColor;
-    int penSize;
-    int CanvasWidth;
-    int CanvasHeight;
-    Dictionary<int, Vector2Int?> lastPoints = new Dictionary<int, Vector2Int?>();
-    Dictionary<int, Color> playerColors = new Dictionary<int, Color>();
-    Dictionary<int, int> playerPenSizes = new Dictionary<int, int>();
-    DrawingUtils drawer;
-
+    [SerializeField] int CanvasWidth;
+    [SerializeField] int CanvasHeight;
     [SerializeField] bool isDrawable;
+
+    Texture2D texture;
+    Color drawColor;
+    Color32[] clearBuffer;
+    int penSize;
+    Dictionary<int, Vector2Int?> lastPoints = new Dictionary<int, Vector2Int?>();
+
 
     private void Start()
     {
-        CanvasWidth = 192;
-        CanvasHeight = 108;
-        texture = new Texture2D(CanvasWidth, CanvasHeight, TextureFormat.RGBA32, false);
-        texture.filterMode = FilterMode.Point;
+        texture = new Texture2D(CanvasWidth, CanvasHeight, TextureFormat.RGBA32, false)
+        {
+            filterMode = FilterMode.Point
+        };
         rawImage.texture = texture;
         drawColor = Color.white;
         penSize = 1;
-        drawer = new DrawingUtils(texture, drawColor, penSize);
 
+        EnsureClearBuffer();
         ClearCanvas();
     }
 
     void Update()
     {
-        Vector2Int localPoint = GetMouseCanvasPosition();
+        if (!isDrawable || texture == null) return;
+        if (!TryGetPixelPos(out var p)) return;
 
-        if (PanelController.instance.currentPanel == PanelController.Panels.Lobby)
-        {
-            isDrawable = true;
-        }
-        else
-        {
-            isDrawable = false;
-        }
-
-        if (IsInsideCanvas(localPoint) && isDrawable)
+        if (isDrawable)
         {
             if (Input.GetMouseButton(0))
             {
                 int actorNumber = PhotonNetwork.LocalPlayer.ActorNumber;
-                photonView.RPC("DrawAtPoint", RpcTarget.All, actorNumber, localPoint.x, localPoint.y, drawColor.r, drawColor.g, drawColor.b, drawColor.a, penSize);
+                photonView.RPC("DrawAtPoint", RpcTarget.All, actorNumber, p.x, p.y, drawColor.r, drawColor.g, drawColor.b, drawColor.a, penSize);
             }
 
             if (Input.GetMouseButtonUp(0))
@@ -61,21 +53,26 @@ public class LobbyDrawing : MonoBehaviourPunCallbacks
         }
     }
 
+    public void SetDrawable(bool value)
+    { 
+        isDrawable = value;
+    }
+
     [PunRPC]
     private void DrawAtPoint(int actorNumber, int x, int y, float r, float g, float b, float a, int size)
     {
-        Vector2Int point = new Vector2Int(x, y);
-        Color color = new Color(r, g, b, a);
+        x = Mathf.Clamp(x, 0, texture.width - 1);
+        y = Mathf.Clamp(y, 0, texture.height - 1);
 
-        playerColors[actorNumber] = color;
-        playerPenSizes[actorNumber] = size;
+        var point = new Vector2Int(x, y);
+        var color = new Color(r, g, b, a);
 
         if (!lastPoints.ContainsKey(actorNumber))
         {
             lastPoints[actorNumber] = null;
         }
 
-        DrawingUtils tempDrawer = new DrawingUtils(texture, color, size);
+        var tempDrawer = new DrawingUtils(texture, color, size);
 
         if (lastPoints[actorNumber].HasValue)
         {
@@ -85,8 +82,8 @@ public class LobbyDrawing : MonoBehaviourPunCallbacks
         {
             tempDrawer.DrawPoint(point);
         }
-        texture.Apply();
         lastPoints[actorNumber] = point;
+        texture.Apply();
     }
 
     [PunRPC]
@@ -98,75 +95,110 @@ public class LobbyDrawing : MonoBehaviourPunCallbacks
         }
     }
 
-    public void ClearCanvas()
+    private void ClearCanvas()
     {
-        Color[] colors = new Color[CanvasWidth * CanvasHeight];
-        for (int i = 0; i < colors.Length; i++)
-        {
-            colors[i] = Color.black;
-        }
-        texture.SetPixels(colors);
+        if (texture == null) return;
+
+        EnsureClearBuffer();
+        texture.SetPixels32(clearBuffer);
         texture.Apply();
     }
 
-    // キャンバス内かどうかを判定する
+    private void EnsureClearBuffer()
+    {
+        int len = texture.width * texture.height;
+        if (clearBuffer == null || clearBuffer.Length != len)
+        {
+            clearBuffer = new Color32[len];
+            var t = new Color32(0, 0, 0, 255);
+            for (int i = 0; i < len; i++) clearBuffer[i] = t;
+        }
+    }
+
+    private bool TryGetPixelPos(out Vector2Int pixelPos)
+    {
+        pixelPos = default;
+
+        if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                rawImage.rectTransform,
+                Input.mousePosition,
+                null,
+                out var local))
+            return false;
+
+        Rect rect = rawImage.rectTransform.rect;
+        if (rect.width <= 0 || rect.height <= 0) return false;
+
+        int x = Mathf.FloorToInt((local.x - rect.x) / rect.width * texture.width);
+        int y = Mathf.FloorToInt((local.y - rect.y) / rect.height * texture.height);
+
+        if (x < 0 || x >= texture.width || y < 0 || y >= texture.height)
+            return false;
+
+        pixelPos = new Vector2Int(x, y);
+        return true;
+    }
+
     private bool IsInsideCanvas(Vector2Int localPoint)
     {
         return localPoint.x >= 0 && localPoint.x < CanvasWidth && localPoint.y >= 0 && localPoint.y < CanvasHeight;
     }
 
-    private Vector2Int GetMouseCanvasPosition()
-    {
-        Vector2 localPoint;
-        RectTransformUtility.ScreenPointToLocalPointInRectangle(rawImage.rectTransform, Input.mousePosition, null, out localPoint);
-
-        Rect rect = rawImage.rectTransform.rect;
-        int x = Mathf.FloorToInt((localPoint.x - rect.x) / rect.width * texture.width);
-        int y = Mathf.FloorToInt((localPoint.y - rect.y) / rect.height * texture.height);
-        return new Vector2Int(x, y);
-    }
-
     public void OnClickColorButton(int index)
     {
-        switch (index)
+        drawColor = index switch
         {
-            case 0:
-                drawColor = Color.black;
-                break;
-            case 1:
-                drawColor = Color.white;
-                break;
-            case 2:
-                drawColor = Color.red;
-                break;
-            case 3:
-                drawColor = Color.green;
-                break;
-            case 4:
-                drawColor = Color.blue;
-                break;
-            case 5:
-                drawColor = Color.yellow;
-                break;
-            case 6:
-                drawColor = Color.magenta;
-                break;
-            case 7:
-                drawColor = Color.cyan;
-                break;
-            case 8:
-                drawColor = Color.gray;
-                break;
-            case 9:
-                drawColor = new Color32(246, 184, 148, 255);
-                break;
-        }
-        drawer = new DrawingUtils(texture, drawColor, penSize);
+            0 => Color.black,
+            1 => Color.white,
+            2 => Color.red,
+            3 => Color.green,
+            4 => Color.blue,
+            5 => Color.yellow,
+            6 => Color.magenta,
+            7 => Color.cyan,
+            8 => Color.gray,
+            9 => new Color32(246, 184, 148, 255),
+            _ => drawColor
+        };
     }
 
     public void OnValueChangedPenSize(Slider slider)
     {
-        penSize = (int)slider.value;
-        drawer = new DrawingUtils(texture, drawColor, penSize);
+        penSize = Mathf.Max(1, Mathf.RoundToInt(slider.value));
+    }
+
+    public override void OnJoinedRoom()
+    {
+        // ホストは参加時にキャンバスを初期状態に戻す
+        if (PhotonNetwork.IsMasterClient && PhotonNetwork.CurrentRoom.PlayerCount == 1)
+        { 
+            ClearCanvas();
+            lastPoints.Clear();
+            return;
+        }
+        // 参加者は参加時点のキャンバス状態をホストにリクエストして受け取る
+        photonView.RPC("RequestCanvasState", RpcTarget.MasterClient, PhotonNetwork.LocalPlayer.ActorNumber);
+    }
+
+    [PunRPC]
+    private void RequestCanvasState(int requesterActorNumber)
+    {
+        if (!PhotonNetwork.IsMasterClient) return;
+
+        byte[] raw = texture.GetRawTextureData().ToArray();
+
+        var target = PhotonNetwork.CurrentRoom.GetPlayer(requesterActorNumber);
+        photonView.RPC("ReceiveCanvasState", target, raw);
+    }
+
+    [PunRPC]
+    private void ReceiveCanvasState(byte[] raw)
+    {
+        // 描画途中の線連結情報はリセット（途中参加での変な線を防ぐ）
+        lastPoints.Clear();
+
+        // 受け取った状態で復元
+        texture.LoadRawTextureData(raw);
+        texture.Apply();
     }
 }

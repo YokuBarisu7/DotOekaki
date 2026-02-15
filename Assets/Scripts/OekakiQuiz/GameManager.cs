@@ -324,7 +324,8 @@ public class GameManager : MonoBehaviourPunCallbacks
 
     public void SubmitAnswer(string answer)
     {
-        photonView.RPC("CheckAnswer", RpcTarget.Others, answer, PhotonNetwork.LocalPlayer.ActorNumber);
+        var q = PhotonNetwork.CurrentRoom.GetPlayer(questionerNumber);
+        photonView.RPC("CheckAnswer", q, answer, PhotonNetwork.LocalPlayer.ActorNumber);
     }
 
     [PunRPC]
