@@ -34,7 +34,10 @@ public class PhotonManager : MonoBehaviourPunCallbacks
         }
         instance = this;
 
-        startBtn = startButton.GetComponent<Button>();
+        if (IsInTitleScene)
+        {
+            startBtn = startButton.GetComponent<Button>();
+        }
     }
 
     void Start()

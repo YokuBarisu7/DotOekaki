@@ -1,6 +1,5 @@
 using UnityEngine;
 using UnityEngine.UI;
-using System.Collections.Generic;
 using Photon.Pun;
 using System.Collections;
 
@@ -11,19 +10,14 @@ public class ChatManager : MonoBehaviourPunCallbacks
 
     [SerializeField] GameObject textPrefab;
     [SerializeField] Transform chatTransform;
-    float r;
-    float g;
-    float b;
-    float a;
+    [SerializeField] ColorPalette textColors;
 
-    List<string> chatMessages = new List<string>();
+    int textColorIndex;
 
     private void Start()
     {
-        r = PlayerPrefs.GetFloat("TextColorR", 1f);
-        g = PlayerPrefs.GetFloat("TextColorG", 1f);
-        b = PlayerPrefs.GetFloat("TextColorB", 1f);
-        a = PlayerPrefs.GetFloat("TextColorA", 1f);
+        textColorIndex = PlayerPrefs.GetInt("TextColorIndex", 0);
+        textColorIndex = Mathf.Clamp(textColorIndex, 0, textColors.colors.Length - 1);
     }
 
     void Update()
@@ -34,9 +28,15 @@ public class ChatManager : MonoBehaviourPunCallbacks
             string answer = chatInputField.text;
             if (!string.IsNullOrEmpty(answer))
             {
-                int actorNumber = PhotonNetwork.LocalPlayer.ActorNumber; // 自分の番号取得
                 string senderName = PhotonNetwork.LocalPlayer.NickName; // 自分の名前取得
-                photonView.RPC("SendChatMessage", RpcTarget.All, answer, senderName, r, g, b, a);
+                if (PhotonNetwork.InRoom)
+                {
+                    photonView.RPC("SendChatMessage", RpcTarget.All, answer, senderName, textColorIndex);
+                }
+                else
+                {
+                    SendChatMessage(answer, senderName, textColorIndex);
+                }
                 chatInputField.text = ""; // チャット入力欄をリセット
 
                 // 出題者以外の場合は回答を提出
@@ -52,13 +52,14 @@ public class ChatManager : MonoBehaviourPunCallbacks
     }
 
     [PunRPC]
-    private void SendChatMessage(string message, string senderName, float r, float g, float b, float a)
+    private void SendChatMessage(string message, string senderName, int index)
     {
         GameObject newTextObject = Instantiate(textPrefab, chatTransform);
         Text newText = newTextObject.GetComponent<Text>();
 
         newText.text = $"{senderName}: {message}";
-        newText.color = new Color(r, g, b, a); ; // テキストの色を設定
+        index = Mathf.Clamp(index, 0, textColors.colors.Length - 1);
+        newText.color = textColors.colors[index]; // テキストの色を設定
 
         Canvas.ForceUpdateCanvases();
         StartCoroutine(ScrollToBottom());

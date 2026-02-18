@@ -3,9 +3,6 @@ using UnityEngine.UI;
 using System.Text.RegularExpressions;
 using Photon.Pun;
 using Photon.Realtime;
-using System.Collections.Generic;
-using UnityEngine.InputSystem;
-using System.Linq;
 
 public class UIManager : MonoBehaviourPunCallbacks
 {
@@ -18,6 +15,7 @@ public class UIManager : MonoBehaviourPunCallbacks
     [SerializeField] Button roomJoinButton;
     [SerializeField] Toggle tsuyuToggle;
     [SerializeField] int playerCount;
+    [SerializeField] ColorPalette textColors;
 
     // おえかきクイズモード
     [SerializeField] Button quizGameStartButton;
@@ -71,102 +69,65 @@ public class UIManager : MonoBehaviourPunCallbacks
         new Resolution { width = 2560, height = 1440 },
         new Resolution { width = 3840, height = 2160 }
     };
-
+    private int FullscreenIndex => resolutions.Length;
+    private const string PreTextColorIndex = "TextColorIndex";
 
     private void Start()
     {
-        int savedIndex = PlayerPrefs.GetInt("ResolutionIndex", 2);
+        InitResolution();
+        InitRoomUI();
+        InitModeInput();
+        InitTextColor();
+    }
+
+    private void InitResolution()
+    {
+        int savedIndex = PlayerPrefs.GetInt("ResolutionIndex", resolutionDropdown.value);
+        savedIndex = Mathf.Clamp(savedIndex, 0, FullscreenIndex);
         resolutionDropdown.value = savedIndex;
-        SetResolution();
+        ApplyResolution();
+    }
 
-        questionCountInputField.onValueChanged.AddListener(OnQuestionCountInputValueChanged);
-        questionCountInputField.onEndEdit.AddListener(ValidateQuestionCountInput);
-        questionCountInputField.text = questionCount.ToString();
-        limitTimeInputField.onValueChanged.AddListener(OnLimitTextInputValueChanged);
-        limitTimeInputField.onEndEdit.AddListener(ValidateLimitTextInput);
-        limitTimeInputField.text = limitTime.ToString();
-
-        cooperateCountInputField.onValueChanged.AddListener(OnCooperateCountInputValueChanged);
-        cooperateCountInputField.onEndEdit.AddListener(ValidateCooperateCountInput);
-        cooperateCountInputField.text = cooperateCount.ToString();
-        cooperateTimeInputField.onValueChanged.AddListener(OnCooperateTimeInputValueChanged);
-        cooperateTimeInputField.onEndEdit.AddListener(ValidateCooperateTimeInput);
-        cooperateTimeInputField.text = cooperateTime.ToString();
-
-        shiritoriTimeInputField.onValueChanged.AddListener(OnShiritoriTimeInputValueChanged);
-        shiritoriTimeInputField.onEndEdit.AddListener(ValidateShiritoriTimeInput);
-        shiritoriTimeInputField.text = shiritoriTime.ToString();
-        shiritoriAnswerTimeInputField.onValueChanged.AddListener(OnShiritoriAnswerTimeInputValueChanged);
-        shiritoriAnswerTimeInputField.onEndEdit.AddListener(ValidateShiritoriAnswerTimeInput);
-        shiritoriAnswerTimeInputField.text = shiritoriAnswerTime.ToString();
-
-        dengonTimeInputField.onValueChanged.AddListener(OnDengonTimeInputValueChanged);
-        dengonTimeInputField.onEndEdit.AddListener(ValidateDengonTimeInput);
-        dengonTimeInputField.text = dengonTime.ToString();
-        dengonAnswerTimeInputField.onValueChanged.AddListener(OnDengonAnswerTimeInputValueChanged);
-        dengonAnswerTimeInputField.onEndEdit.AddListener(ValidateDengonAnswerTimeInput);
-        dengonAnswerTimeInputField.text = dengonAnswerTime.ToString();
-
+    private void InitRoomUI()
+    {
         createPasswordInputField.onValueChanged.AddListener(OnCreatePasswordInputFieldValueChanged);
         joinPasswordInputField.onValueChanged.AddListener(OnJoinPasswordInputFieldValueChanged);
-
         playerCountDropdown.onValueChanged.AddListener(OnPlayerCountDropdownValueChanged);
     }
 
-    private void Update()
+    private void InitModeInput()
     {
-        if (PhotonNetwork.InRoom)
-        {
-            if (!isErrorQuestionCount && !isErrorLimitTime)
-            {
-                quizGameStartButton.interactable = true;
-            }
-            else
-            {
-                quizGameStartButton.interactable = false;
-            }
+        BindIntInput(questionCountInputField, questionCount, OnQuestionCountInputValueChanged, ValidateQuestionCountInput);
+        BindIntInput(limitTimeInputField, limitTime, OnLimitTextInputValueChanged, ValidateLimitTimeInput);
 
-            if (!isErrorCooperateCount && !isErrorCooperateTime)
-            {
-                cooperateQuizStartButton.interactable = true;
-            }
-            else
-            {
-                cooperateQuizStartButton.interactable = false;
-            }
+        BindIntInput(cooperateCountInputField, cooperateCount, OnCooperateCountInputValueChanged, ValidateCooperateCountInput);
+        BindIntInput(cooperateTimeInputField, cooperateTime, OnCooperateTimeInputValueChanged, ValidateCooperateTimeInput);
 
-            if (!isErrorDengonTime && !isErrorDengonAnswerTime)
-            {
-                dengonStartButton.interactable = true;
-            }
-            else
-            {
-                dengonStartButton.interactable = false;
-            }
+        BindIntInput(shiritoriTimeInputField, shiritoriTime, OnShiritoriTimeInputValueChanged, ValidateShiritoriTimeInput);
+        BindIntInput(shiritoriAnswerTimeInputField, shiritoriAnswerTime, OnShiritoriAnswerTimeInputValueChanged, ValidateShiritoriAnswerTimeInput);
 
-            if (!isErrorShiritoriTime && !isErrorShiritoriAnswerTime)
-            {
-                shiritoriStartButton.interactable = true;
-            }
-            else
-            {
-                shiritoriStartButton.interactable = false;
-            }
+        BindIntInput(dengonTimeInputField, dengonTime, OnDengonTimeInputValueChanged, ValidateDengonTimeInput);
+        BindIntInput(dengonAnswerTimeInputField, dengonAnswerTime, OnDengonAnswerTimeInputValueChanged, ValidateDengonAnswerTimeInput);
+    }
 
-            if (PhotonNetwork.CurrentRoom.PlayerCount >= 3)
-            {
-                cooperateQuizButton.interactable = true;
-            }
-            else
-            {
-                cooperateQuizButton.interactable = false;
-            }
-        }
+    private void InitTextColor()
+    {
+        int savedIndex = PlayerPrefs.GetInt(PreTextColorIndex, 0);
+        savedIndex = Mathf.Clamp(savedIndex, 0, textColors.colors.Length - 1);
+        ApplyTextColorByIndex(savedIndex);
+    }
+
+    private void BindIntInput(InputField field, int initialValue,
+        UnityEngine.Events.UnityAction<string> onChanged,
+        UnityEngine.Events.UnityAction<string> onEndEdit)
+    {
+        field.onValueChanged.AddListener(onChanged);
+        field.onEndEdit.AddListener(onEndEdit);
+        field.text = initialValue.ToString();
     }
 
 
     // --------------- ボタン ---------------
-
     public void OnCreateRoomButtonClick()
     {
         var roomOptions = new RoomOptions();
@@ -214,6 +175,15 @@ public class UIManager : MonoBehaviourPunCallbacks
         PanelController.instance.OnClickButton(4);
     }
 
+    // 協力おえかきモードはplayerが３人以上で選択可能(playerが入退室したときに実行)
+    public override void OnPlayerEnteredRoom(Player newPlayer) => RefreshCooperateButton();
+    public override void OnPlayerLeftRoom(Player otherPlayer) => RefreshCooperateButton();
+
+    private void RefreshCooperateButton()
+    {
+        cooperateQuizButton.interactable = PhotonNetwork.IsMasterClient && PhotonNetwork.CurrentRoom.PlayerCount >= 3;
+    }
+
     // ルーム参加失敗時のコールバック
     public override void OnJoinRoomFailed(short returnCode, string message)
     {
@@ -254,10 +224,20 @@ public class UIManager : MonoBehaviourPunCallbacks
         joinPasswordInputField.text = "";
     }
 
-
     public void OnClickOfflineStartButton()
     {
         SceneController.instance.LoadScene("Offline");
+    }
+
+    private void StartSceneForAll(string sceneName)
+    {
+        photonView.RPC("LoadSceneRPC", RpcTarget.All, sceneName);
+    }
+
+    [PunRPC]
+    private void LoadSceneRPC(string sceneName)
+    {
+        SceneController.instance.LoadScene(sceneName);
     }
 
     public void OnClickOekakiQuizStartButton()
@@ -267,18 +247,12 @@ public class UIManager : MonoBehaviourPunCallbacks
             PlayerPrefs.SetInt("QuestionCount", questionCount);
             PlayerPrefs.SetInt("LimitTime", limitTime);
             PlayerPrefs.SetInt("Tsuyu", tsuyuToggle.isOn ? 1 : 0);
-            photonView.RPC("StartOekakiQuiz", RpcTarget.All);
+            StartSceneForAll("OekakiQuiz");
         }
         else
         {
             SceneController.instance.LoadScene("OekakiQuiz");
         }
-    }
-
-    [PunRPC]
-    private void StartOekakiQuiz()
-    {
-        SceneController.instance.LoadScene("OekakiQuiz");
     }
 
     public void OnClickCooperateQuizStartButton()
@@ -287,18 +261,12 @@ public class UIManager : MonoBehaviourPunCallbacks
         {
             PlayerPrefs.SetInt("CooperateCount", cooperateCount);
             PlayerPrefs.SetInt("CooperateTime", cooperateTime);
-            photonView.RPC("StartCooperateQuiz", RpcTarget.All);
+            StartSceneForAll("CooperateQuiz");
         }
         else
         {
             SceneController.instance.LoadScene("CooperateQuiz");
         }
-    }
-
-    [PunRPC]
-    private void StartCooperateQuiz()
-    {
-        SceneController.instance.LoadScene("CooperateQuiz");
     }
 
     public void OnClickShiritoriStartButton()
@@ -307,18 +275,12 @@ public class UIManager : MonoBehaviourPunCallbacks
         {
             PlayerPrefs.SetInt("ShiritoriTime", shiritoriTime);
             PlayerPrefs.SetInt("ShiritoriAnswerTime", shiritoriAnswerTime);
-            photonView.RPC("StartShiritori", RpcTarget.All);
+            StartSceneForAll("Eshiritori");
         }
         else
         {
             SceneController.instance.LoadScene("Eshiritori");
         }
-    }
-
-    [PunRPC]
-    private void StartShiritori()
-    {
-        SceneController.instance.LoadScene("Eshiritori");
     }
 
     public void OnClickDengonButton()
@@ -327,7 +289,7 @@ public class UIManager : MonoBehaviourPunCallbacks
         {
             PlayerPrefs.SetInt("DengonTime", dengonTime);
             PlayerPrefs.SetInt("DengonAnswerTime", dengonAnswerTime);
-            photonView.RPC("StartDengon", RpcTarget.All);
+            StartSceneForAll("Dengon");
         }
         else
         {
@@ -335,10 +297,22 @@ public class UIManager : MonoBehaviourPunCallbacks
         }
     }
 
-    [PunRPC]
-    private void StartDengon()
+    public void ApplyResolution()
     {
-        SceneController.instance.LoadScene("Dengon");
+        int index = resolutionDropdown.value;
+
+        if (index == FullscreenIndex)
+        {
+            Screen.SetResolution(Screen.currentResolution.width, Screen.currentResolution.height, true);
+        }
+        else
+        {
+            Resolution resolution = resolutions[index];
+            Screen.SetResolution(resolution.width, resolution.height, false);
+        }
+
+        PlayerPrefs.SetInt("ResolutionIndex", resolutionDropdown.value);
+        PlayerPrefs.Save();
     }
 
 
@@ -350,7 +324,6 @@ public class UIManager : MonoBehaviourPunCallbacks
 
 
     // --------------- InputField ---------------
-
     // ルーム作成、参加時の処理
     private void OnCreatePasswordInputFieldValueChanged(string input)
     { 
@@ -362,240 +335,109 @@ public class UIManager : MonoBehaviourPunCallbacks
         roomJoinButton.interactable = !string.IsNullOrEmpty(joinPasswordInputField.text);
     }
 
+    // 数字以外の入力を無効化
+    private static bool IsDigitsOnly(string s) => Regex.IsMatch(s, @"^\d+$");
+    private void ForceDigitsOrZero(InputField field, string input)
+    {
+        if (!IsDigitsOnly(input))
+        {
+            field.text = "0";
+        }
+    }
+
+    private void ApplyIntRange(string input, int min, int max, ref int targetValue, ref bool errorFlag)
+    {
+        if (!int.TryParse(input, out int value))
+        {
+            errorFlag = true;
+            return;
+        }
+
+        targetValue = value;
+        errorFlag = (value < min || value > max);
+    }
 
     // おえかきクイズモード
     private void ValidateQuestionCountInput(string input)
     {
-        // 数字以外の入力を無効化
-        if (!Regex.IsMatch(input, @"^\d+$"))
-        {
-            questionCountInputField.text = "0";
-        }
+        ForceDigitsOrZero(questionCountInputField, input);
     }
-    private void ValidateLimitTextInput(string input)
+    private void ValidateLimitTimeInput(string input)
     {
-        // 数字以外の入力を無効化
-        if (!Regex.IsMatch(input, @"^\d+$"))
-        {
-            limitTimeInputField.text = "0";
-        }
+        ForceDigitsOrZero(limitTimeInputField, input);
     }
     private void OnQuestionCountInputValueChanged(string input)
     {
-        if (int.TryParse(input, out int value))
-        {
-            questionCount = int.Parse(questionCountInputField.text);
-            // 入力値が制限内かどうかをチェック
-            if (value >= 1 && value <= 10)
-            {
-                isErrorQuestionCount = false;
-            }
-            else
-            {
-                isErrorQuestionCount = true;
-            }
-        }
-        else
-        {
-            isErrorQuestionCount = true;
-        }
+        ApplyIntRange(input, 1, 10, ref questionCount, ref isErrorQuestionCount);
+        quizGameStartButton.interactable = !isErrorQuestionCount && !isErrorLimitTime;
     }
     private void OnLimitTextInputValueChanged(string input)
     {
-        if (int.TryParse(input, out int value))
-        {
-            limitTime = int.Parse(limitTimeInputField.text);
-            // 入力値が制限内かどうかをチェック
-            if (value >= 30 && value <= 999)
-            {
-                isErrorLimitTime = false;
-            }
-            else
-            {
-                isErrorLimitTime = true;
-            }
-        }
-        else
-        {
-            isErrorLimitTime = true;
-        }
+        ApplyIntRange(input, 30, 999, ref limitTime, ref isErrorLimitTime);
+        quizGameStartButton.interactable = !isErrorQuestionCount && !isErrorLimitTime;
     }
 
 
     // 協力クイズモード
     private void ValidateCooperateCountInput(string input)
     {
-        // 数字以外の入力を無効化
-        if (!Regex.IsMatch(input, @"^\d+$"))
-        {
-            cooperateCountInputField.text = "0";
-        }
+        ForceDigitsOrZero(cooperateCountInputField, input);
     }
     private void ValidateCooperateTimeInput(string input)
     {
-        // 数字以外の入力を無効化
-        if (!Regex.IsMatch(input, @"^\d+$"))
-        {
-            cooperateTimeInputField.text = "0";
-        }
+        ForceDigitsOrZero(cooperateTimeInputField, input);
     }
     private void OnCooperateCountInputValueChanged(string input)
     {
-        if (int.TryParse(input, out int value))
-        {
-            cooperateCount = int.Parse(cooperateCountInputField.text);
-            // 入力値が制限内かどうかをチェック
-            if (value >= 1 && value <= 10)
-            {
-                isErrorCooperateCount = false;
-            }
-            else
-            {
-                isErrorCooperateCount = true;
-            }
-        }
-        else
-        {
-            isErrorCooperateCount = true;
-        }
+        ApplyIntRange(input, 1, 10, ref cooperateCount, ref isErrorCooperateCount);
+        cooperateQuizStartButton.interactable = !isErrorCooperateCount && !isErrorCooperateTime;
     }
     private void OnCooperateTimeInputValueChanged(string input)
     {
-        if (int.TryParse(input, out int value))
-        {
-            cooperateTime = int.Parse(cooperateTimeInputField.text);
-            // 入力値が制限内かどうかをチェック
-            if (value >= 30 && value <= 999)
-            {
-                isErrorCooperateTime = false;
-            }
-            else
-            {
-                isErrorCooperateTime = true;
-            }
-        }
-        else
-        {
-            isErrorCooperateTime = true;
-        }
+        ApplyIntRange(input, 30, 999, ref cooperateTime, ref isErrorCooperateTime);
+        cooperateQuizStartButton.interactable = !isErrorCooperateCount && !isErrorCooperateTime;
     }
 
 
     // 絵しりとりモード
     private void ValidateShiritoriTimeInput(string input)
     {
-        // 数字以外の入力を無効化
-        if (!Regex.IsMatch(input, @"^\d+$"))
-        {
-            shiritoriTimeInputField.text = "0";
-        }
+        ForceDigitsOrZero(shiritoriTimeInputField, input);
     }
     private void ValidateShiritoriAnswerTimeInput(string input)
     {
-        // 数字以外の入力を無効化
-        if (!Regex.IsMatch(input, @"^\d+$"))
-        {
-            shiritoriAnswerTimeInputField.text = "0";
-        }
+        ForceDigitsOrZero(shiritoriAnswerTimeInputField, input);
     }
     private void OnShiritoriTimeInputValueChanged(string input)
     {
-        if (int.TryParse(input, out int value))
-        {
-            shiritoriTime = int.Parse(shiritoriTimeInputField.text);
-            // 入力値が制限内かどうかをチェック
-            if (value >= 10 && value <= 999)
-            {
-                isErrorShiritoriTime = false;
-            }
-            else
-            {
-                isErrorShiritoriTime = true;
-            }
-        }
-        else
-        {
-            isErrorShiritoriTime = true;
-        }
+        ApplyIntRange(input, 10, 999, ref shiritoriTime, ref isErrorShiritoriTime);
+        shiritoriStartButton.interactable = !isErrorShiritoriTime && !isErrorShiritoriAnswerTime;
     }
     private void OnShiritoriAnswerTimeInputValueChanged(string input)
     {
-        if (int.TryParse(input, out int value))
-        {
-            shiritoriAnswerTime = int.Parse(shiritoriAnswerTimeInputField.text);
-            // 入力値が制限内かどうかをチェック
-            if (value >= 10 && value <= 300)
-            {
-                isErrorShiritoriAnswerTime = false;
-            }
-            else
-            {
-                isErrorShiritoriAnswerTime = true;
-            }
-        }
-        else
-        {
-            isErrorShiritoriAnswerTime = true;
-        }
+        ApplyIntRange(input, 10, 300, ref shiritoriAnswerTime, ref isErrorShiritoriAnswerTime);
+        shiritoriStartButton.interactable = !isErrorShiritoriTime && !isErrorShiritoriAnswerTime;
     }
 
 
     // 伝言ゲームモード
     private void ValidateDengonTimeInput(string input)
     {
-        // 数字以外の入力を無効化
-        if (!Regex.IsMatch(input, @"^\d+$"))
-        {
-            dengonTimeInputField.text = "0";
-        }
+        ForceDigitsOrZero(dengonTimeInputField, input);
     }
     private void ValidateDengonAnswerTimeInput(string input)
     {
-        // 数字以外の入力を無効化
-        if (!Regex.IsMatch(input, @"^\d+$"))
-        {
-            dengonAnswerTimeInputField.text = "0";
-        }
+        ForceDigitsOrZero(dengonAnswerTimeInputField, input);
     }
     private void OnDengonTimeInputValueChanged(string input)
     {
-        if (int.TryParse(input, out int value))
-        {
-            dengonTime = int.Parse(dengonTimeInputField.text);
-            // 入力値が制限内かどうかをチェック
-            if (value >= 10 && value <= 999)
-            {
-                isErrorDengonTime = false;
-            }
-            else
-            {
-                isErrorDengonTime = true;
-            }
-        }
-        else
-        {
-            isErrorDengonTime = true;
-        }
+        ApplyIntRange(input, 10, 999, ref dengonTime, ref isErrorDengonTime);
+        dengonStartButton.interactable = !isErrorDengonTime && !isErrorDengonAnswerTime;
     }
     private void OnDengonAnswerTimeInputValueChanged(string input)
     {
-        if (int.TryParse(input, out int value))
-        {
-            dengonAnswerTime = int.Parse(dengonAnswerTimeInputField.text);
-            // 入力値が制限内かどうかをチェック
-            if (value >= 10 && value <= 300)
-            {
-                isErrorDengonAnswerTime = false;
-            }
-            else
-            {
-                isErrorDengonAnswerTime = true;
-            }
-        }
-        else
-        {
-            isErrorDengonAnswerTime = true;
-        }
+        ApplyIntRange(input, 10, 300, ref dengonAnswerTime, ref isErrorDengonAnswerTime);
+        dengonStartButton.interactable = !isErrorDengonTime && !isErrorDengonAnswerTime;
     }
 
     // --------------- オプションメニュー ---------------
@@ -612,12 +454,7 @@ public class UIManager : MonoBehaviourPunCallbacks
     public void DisplayPlayerName()
     {
         playerNameInputField.text = PlayerPrefs.GetString("PlayerName");
-        float r = PlayerPrefs.GetFloat("TextColorR", 1f);
-        float g = PlayerPrefs.GetFloat("TextColorG", 1f);
-        float b = PlayerPrefs.GetFloat("TextColorB", 1f);
-        float a = PlayerPrefs.GetFloat("TextColorA", 1f);
-        textColorText.color = new Color(r, g, b, a);
-        textColorImage.color = new Color(r, g, b, a);
+        InitTextColor();
     }
 
     // デバッグ用
@@ -630,74 +467,18 @@ public class UIManager : MonoBehaviourPunCallbacks
 
     public void OnTextColorButtonClick(int index)
     {
-        switch (index)
-        {
-            case 0:
-                textColorText.color = Color.red;
-                textColorImage.color = Color.red;
-                break;
-            case 1:
-                textColorText.color = Color.blue;
-                textColorImage.color = Color.blue;
-                break;
-            case 2:
-                textColorText.color = Color.green;
-                textColorImage.color = Color.green;
-                break;
-            case 3:
-                textColorText.color = Color.yellow;
-                textColorImage.color = Color.yellow;
-                break;
-            case 4:
-                textColorText.color = Color.cyan;
-                textColorImage.color = Color.cyan;
-                break;
-            case 5:
-                textColorText.color = Color.magenta;
-                textColorImage.color = Color.magenta;
-                break;
-            case 6:
-                textColorText.color = new Color32(67, 0, 255, 255);
-                textColorImage.color = new Color32(67, 0, 255, 255);
-                break;
-            case 7:
-                textColorText.color = new Color32(254, 93, 38, 255);
-                textColorImage.color = new Color32(254, 93, 38, 255);
-                break;
-            case 8:
-                textColorText.color = new Color32(16, 46, 80, 255);
-                textColorImage.color = new Color32(16, 46, 80, 255);
-                break;
-            case 9:
-                textColorText.color = new Color32(242, 226, 177, 255);
-                textColorImage.color = new Color32(242, 226, 177, 255);
-                break;
-            case 10:
-                textColorText.color = new Color32(143, 135, 241, 255);
-                textColorImage.color = new Color32(143, 135, 241, 255);
-                break;
-            case 11:
-                textColorText.color = new Color32(148, 80, 52, 255);
-                textColorImage.color = new Color32(148, 80, 52, 255);
-                break;
-            default:
-                textColorText.color = Color.white;
-                textColorImage.color = Color.white;
-                break;
-        }
-        PlayerPrefs.SetFloat("TextColorR", textColorText.color.r);
-        PlayerPrefs.SetFloat("TextColorG", textColorText.color.g);
-        PlayerPrefs.SetFloat("TextColorB", textColorText.color.b);
-        PlayerPrefs.SetFloat("TextColorA", textColorText.color.a);
+        index = Mathf.Clamp(index, 0, textColors.colors.Length - 1);
+
+        ApplyTextColorByIndex(index);
+
+        PlayerPrefs.SetInt(PreTextColorIndex, index);
         PlayerPrefs.Save();
     }
 
-    private void SetResolution()
+    private void ApplyTextColorByIndex(int index)
     {
-        Resolution resolution = resolutions[resolutionDropdown.value];
-        Screen.SetResolution(resolution.width, resolution.height, false);
-        PlayerPrefs.SetInt("ResolutionIndex", resolutionDropdown.value);
-        PlayerPrefs.Save();
+        Color c = textColors.colors[index];
+        textColorText.color = c;
+        textColorImage.color = c;
     }
 }
-
