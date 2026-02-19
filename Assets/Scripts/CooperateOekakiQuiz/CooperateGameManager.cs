@@ -35,6 +35,7 @@ public class CooperateGameManager : MonoBehaviourPunCallbacks
     private bool isTimerActive;
     private bool isTimeUp;
 
+    [SerializeField] int mode;
     [SerializeField] bool isFinished;
 
     [SerializeField] Transform resultList; //結果表示用の親オブジェクト
@@ -61,12 +62,13 @@ public class CooperateGameManager : MonoBehaviourPunCallbacks
         {
             Destroy(gameObject);
         }
+
+        themeGenerator = FindAnyObjectByType<ThemeGenerator>();
+        dotUIManager = FindAnyObjectByType<CooperateUIManager>();
     }
 
     private void Start()
     {
-        themeGenerator = FindAnyObjectByType<ThemeGenerator>();
-        dotUIManager = FindAnyObjectByType<CooperateUIManager>();
         if (PhotonNetwork.InRoom)
         {
             Debug.Log("オンラインモードで実行");
@@ -127,7 +129,7 @@ public class CooperateGameManager : MonoBehaviourPunCallbacks
             GenerateQuestionerOrder(); // 出題者の順番を生成
             photonView.RPC("SetQuestioner", RpcTarget.All);
             photonView.RPC("StartTimer", RpcTarget.All); // タイマーを開始
-            photonView.RPC("HideLoadObj", RpcTarget.All); // ロードオブジェクトを非表示
+            photonView.RPC("SetLoadObj", RpcTarget.All, false); // ロードオブジェクトを非表示
         }
     }
 
@@ -169,31 +171,32 @@ public class CooperateGameManager : MonoBehaviourPunCallbacks
 
     public void StartGame()
     {
+        if (!PhotonNetwork.IsMasterClient) return;
+
         questionCount = PlayerPrefs.GetInt("CooperateCount", 5);
         timeLimit = PlayerPrefs.GetInt("CooperateTime", 180);
-
-        themeGenerator.GenerateAndShuffleIndex();
+        mode = PlayerPrefs.GetInt("Mode", 0);
 
         photonView.RPC("SyncOption", RpcTarget.All, questionCount, timeLimit);
-
         photonView.RPC("SetQuestioner", RpcTarget.All);
-
         photonView.RPC("SyncSettings", RpcTarget.All);
-
         photonView.RPC("MoveGamePanel", RpcTarget.All, new Vector2(0, 0));
+        photonView.RPC("SetLoadObj", RpcTarget.All, true);
+
+        themeGenerator.BroadcastThemes(mode);
     }
 
     public void RestartGame()
     {
-        themeGenerator.GenerateAndShuffleIndex();
+        if (!PhotonNetwork.IsMasterClient) return;
 
         photonView.RPC("SyncOption", RpcTarget.All, questionCount, timeLimit);
-
         photonView.RPC("SetQuestioner", RpcTarget.All);
-
         photonView.RPC("SyncSettings", RpcTarget.All);
-
         photonView.RPC("MoveGamePanel", RpcTarget.All, new Vector2(0, 0));
+        photonView.RPC("SetLoadObj", RpcTarget.All, true);
+
+        themeGenerator.BroadcastThemes(mode);
     }
 
     // ①
@@ -249,7 +252,7 @@ public class CooperateGameManager : MonoBehaviourPunCallbacks
         {
             if (PhotonNetwork.LocalPlayer.ActorNumber == questionerNumbers[0])
             {
-                currentTheme = themeGenerator.GetRandomTheme(questionCount - questionCountLeft);
+                currentTheme = themeGenerator.GetTheme(questionCount - questionCountLeft);
                 photonView.RPC("UpdateCurrentTheme", RpcTarget.Others, currentTheme.question);
             }
             CooperateDrawingManager.instance.isDrawable = true;
@@ -371,18 +374,18 @@ public class CooperateGameManager : MonoBehaviourPunCallbacks
         {
             return;
         }
-        dotUIManager.SetThemeText(GetRole(), currentTheme.question);
+        dotUIManager.SetThemeText(IsQuestioner(), currentTheme.question);
     }
 
-    private Role GetRole()
+    private bool IsQuestioner()
     {
         if (PhotonNetwork.LocalPlayer.ActorNumber == questionerNumbers[0] || PhotonNetwork.LocalPlayer.ActorNumber == questionerNumbers[1])
         {
-            return Role.Questioner;
+            return true;
         }
         else
         {
-            return Role.Answerer;
+            return false;
         }
     }
 
@@ -430,9 +433,9 @@ public class CooperateGameManager : MonoBehaviourPunCallbacks
     }
 
     [PunRPC]
-    private void HideLoadObj()
+    private void SetLoadObj(bool isActive)
     {
-        loadObj.SetActive(false);
+        loadObj.SetActive(isActive);
     }
 
 

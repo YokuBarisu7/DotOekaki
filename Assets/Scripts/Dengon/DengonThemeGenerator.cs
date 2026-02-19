@@ -2,7 +2,6 @@ using UnityEngine;
 using System.Collections.Generic;
 using Photon.Pun;
 using ExitGames.Client.Photon;
-using Photon.Realtime;
 using System.Linq;
 
 public class DengonThemeGenerator : MonoBehaviourPunCallbacks

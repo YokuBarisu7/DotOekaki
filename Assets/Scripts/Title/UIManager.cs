@@ -13,7 +13,7 @@ public class UIManager : MonoBehaviourPunCallbacks
     [SerializeField] Text joinErrorText;
     [SerializeField] Button roomCreateButton;
     [SerializeField] Button roomJoinButton;
-    [SerializeField] Toggle tsuyuToggle;
+    [SerializeField] Toggle modeToggle;
     [SerializeField] int playerCount;
     [SerializeField] ColorPalette textColors;
 
@@ -246,7 +246,7 @@ public class UIManager : MonoBehaviourPunCallbacks
         {
             PlayerPrefs.SetInt("QuestionCount", questionCount);
             PlayerPrefs.SetInt("LimitTime", limitTime);
-            PlayerPrefs.SetInt("Tsuyu", tsuyuToggle.isOn ? 1 : 0);
+            PlayerPrefs.SetInt("Mode", modeToggle.isOn ? 1 : 0);
             StartSceneForAll("OekakiQuiz");
         }
         else

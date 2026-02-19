@@ -1,94 +1,191 @@
 using UnityEngine;
 using System.Collections.Generic;
 using Photon.Pun;
+using ExitGames.Client.Photon;
+using System;
 
 public class ThemeGenerator : MonoBehaviourPunCallbacks
 {
     [SerializeField] GoogleSheetLoader googleSheetLoader;
+
     List<QuizQuestion> themeList;
     List<int> themeListIndex;
 
-    [SerializeField] int tsuyuMode; // 0: 通常, 1: つゆモード
+    [SerializeField] int mode; // 0: ふつう、1: むずかしい
+    int lastMode = -1;
+
+    const string KEY_JSON = "OekakiQuizThemeJson";
+    const string KEY_SEED = "OekakiQuizShuffleSeed";
+    const string KEY_VER = "OekakiQuizThemeVer";
+
+    public event Action<int> OnThemeApplied;
+
+    [System.Serializable]
+    private class QuizThemeListWrapper
+    {
+        public List<QuizQuestion> themes;
+        public QuizThemeListWrapper(List<QuizQuestion> t) { themes = t; }
+    }
 
     void Start()
     {
-        if (PhotonNetwork.InRoom)
+        if (PhotonNetwork.IsMasterClient)
         {
-            if (PhotonNetwork.IsMasterClient)
+            mode = PlayerPrefs.GetInt("Mode", 0);
+            BroadcastThemes(mode);
+        }
+
+        TryApplyRoomTheme();
+    }
+
+    // 再プレイ時に呼ばれる
+    public void BroadcastThemes(int mode)
+    {
+        if (PhotonNetwork.InRoom && !PhotonNetwork.IsMasterClient) return;
+
+        bool hasJson = PhotonNetwork.CurrentRoom.CustomProperties.ContainsKey(KEY_JSON);
+
+        // 初回 or mode変更 or ルームにまだJSONがない　➔　取得してJSONを更新
+        if (!hasJson || lastMode != mode || themeList == null)
+        {
+            lastMode = mode;
+
+            googleSheetLoader.LoadDataFromGoogleSheet(mode, () =>
             {
-                tsuyuMode = PlayerPrefs.GetInt("Tsuyu", 0); // デフォルトは通常モード
+                var list = googleSheetLoader.questions; // クイズリストを取得
+                RemoveInvalidQuestions(list); // 空欄を無くす
 
-                // ホストはスプレッドシートから問題リストを取得し、同期する
-                googleSheetLoader.LoadDataFromGoogleSheet(tsuyuMode);
-                themeList = googleSheetLoader.questions;
+                themeList = list ?? new List<QuizQuestion>();
 
-                // 問題の数分のインデックスを生成し、同期する
-                GenerateAndShuffleIndex();
+                string json = JsonUtility.ToJson(new QuizThemeListWrapper(themeList));
 
-                SetReady(true); // ホストはこのタイミングで準備完了状態になる
-            }
-            else
-            {
-                // 入室時点でSharedQuestionsが既に存在していれば取得
-                if (PhotonNetwork.CurrentRoom.CustomProperties.ContainsKey("SharedQuestions"))
+                int nextVer = GetRoomVer() + 1;
+                int seed = CreateNewSeed();
+
+                var props = new Hashtable
                 {
-                    string serializedQuestions = PhotonNetwork.CurrentRoom.CustomProperties["SharedQuestions"] as string;
-                    themeList = googleSheetLoader.DeserializeQuestions(serializedQuestions);
-                    Debug.Log("入室時にSharedQuestionsを取得しました");
-                }
-            }
+                    { KEY_JSON, json },
+                    { KEY_SEED, seed },
+                    { KEY_VER, nextVer }
+                };
+                PhotonNetwork.CurrentRoom.SetCustomProperties(props);
+
+                ApplyThemeFromRoom(json, seed, nextVer); // ホストはここで ThemeReady
+            });
+
+            return;
+        }
+
+        // 同じmodeで再プレイ　➔　seedだけ更新
+        int nextVer = GetRoomVer() + 1;
+        int seed = CreateNewSeed();
+
+        var props = new Hashtable
+            {
+                { KEY_SEED, seed },
+                { KEY_VER,  nextVer }
+            };
+        PhotonNetwork.CurrentRoom.SetCustomProperties(props);
+
+        // ホスト自身も即適用
+        if (TryGetRoomJson(out var json))
+        {
+            ApplyThemeFromRoom(json, seed, nextVer);
         }
     }
 
-    // ルームのカスタムプロパティが変更されると自動的に呼ばれるコールバック
-    public override void OnRoomPropertiesUpdate(ExitGames.Client.Photon.Hashtable propertiesThatChanged)
+    public override void OnRoomPropertiesUpdate(Hashtable changedProps)
     {
-        if (propertiesThatChanged.ContainsKey("SharedQuestions"))
+        if (changedProps.ContainsKey(KEY_JSON) || changedProps.ContainsKey(KEY_SEED) || changedProps.ContainsKey(KEY_VER))
         {
-            string serializedQuestions = propertiesThatChanged["SharedQuestions"] as string;
-            themeList = googleSheetLoader.DeserializeQuestions(serializedQuestions);
-            Debug.Log("クイズリストをルームから受信しました！");
-
-            SetReady(true); // クイズリストを受信したら、プレイヤーを準備完了状態にする
+            TryApplyRoomTheme();
         }
     }
 
-    private void SetReady(bool isReady)
-    { 
-        var props = new ExitGames.Client.Photon.Hashtable
-        {
-            { "Ready", isReady }
-        };
-        PhotonNetwork.LocalPlayer.SetCustomProperties(props);
+    private void TryApplyRoomTheme()
+    {
+        if (!PhotonNetwork.InRoom) return;
+        if (!TryGetRoomJson(out var json)) return;
+        int seed = GetRoomSeed();
+        int ver = GetRoomVer();
+        
+        ApplyThemeFromRoom(json, seed, ver);
     }
 
-    public void GenerateAndShuffleIndex()
+    private void ApplyThemeFromRoom(string json, int seed, int ver)
     {
-        themeListIndex = new List<int>();
-        for (int i = 0; i < themeList.Count; i++)
+        if (string.IsNullOrEmpty(json)) return;
+
+        var wrapper = JsonUtility.FromJson<QuizThemeListWrapper>(json);
+        themeList = wrapper?.themes ?? new List<QuizQuestion>();
+        RemoveInvalidQuestions(themeList);
+
+        // seedでシャッフルされた themeListIndex を作る
+        themeListIndex = BuildShuffledIndex(themeList.Count, seed);
+
+        // GameManagerへ ThemeReady 通知
+        OnThemeApplied?.Invoke(ver);
+    }
+
+    public QuizQuestion GetTheme(int roundIndex)
+    {
+        if (themeList == null || themeListIndex == null) return null;
+        if (roundIndex < 0 || roundIndex >= themeListIndex.Count) return null;
+
+        int real = themeListIndex[roundIndex];
+        if (real < 0 || real >= themeList.Count) return null;
+
+        return themeList[real];
+    }
+
+    // -------------------- utils -----------------------
+
+    private bool TryGetRoomJson(out string json)
+    {
+        json = null;
+        if (!PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue(KEY_JSON, out var obj)) return false;
+        json = obj as string;
+        return !string.IsNullOrEmpty(json);
+    }
+
+    private int GetRoomSeed()
+    {
+        if (PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue(KEY_SEED, out var obj) && obj is int s)
+            return s;
+        return 0; // seed未設定でも動くように（0固定）
+    }
+
+    private int GetRoomVer()
+    {
+        if (PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue(KEY_VER, out var obj) && obj is int v)
+            return v;
+        return 0;
+    }
+
+    private int CreateNewSeed()
+    {
+        // 乱数の質はそこまで要らない。毎回変わればOK。
+        return UnityEngine.Random.Range(int.MinValue, int.MaxValue);
+    }
+
+    private static List<int> BuildShuffledIndex(int count, int seed)
+    {
+        var idx = new List<int>(count);
+        for (int i = 0; i < count; i++) idx.Add(i);
+
+        var rng = new System.Random(seed);
+        for (int i = count - 1; i > 0; i--)
         {
-            themeListIndex.Add(i);
+            int j = rng.Next(i + 1);
+            (idx[i], idx[j]) = (idx[j], idx[i]);
         }
-        for (int i = themeListIndex.Count - 1; i > 0; i--)
-        {
-            int j = Random.Range(0, i + 1);
-            int temp = themeListIndex[i];
-            themeListIndex[i] = themeListIndex[j];
-            themeListIndex[j] = temp;
-        }
-        photonView.RPC("SyncIndex", RpcTarget.All, themeListIndex.ToArray());
+        return idx;
     }
 
-    [PunRPC]
-    public void SyncIndex(int[] numbers)
+    // お題が空になることを防ぐ
+    private void RemoveInvalidQuestions(List<QuizQuestion> list)
     {
-        themeListIndex = new List<int>(numbers);
-    }
-
-    // 重複を許さずにランダムなお題を取得する
-    public QuizQuestion GetRandomTheme(int index)
-    {
-        QuizQuestion theme = themeList[themeListIndex[index]];
-        return theme;
+        if (list == null) return;
+        list.RemoveAll(q => q == null || string.IsNullOrWhiteSpace(q.question) || q.answerList == null || q.answerList.Count == 0);
     }
 }

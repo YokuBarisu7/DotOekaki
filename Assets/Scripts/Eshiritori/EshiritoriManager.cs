@@ -72,9 +72,7 @@ public class EshiritoriManager : MonoBehaviourPunCallbacks
         // 出題者決定
         questionerNumber = GetNextQuestioner();
         // 出題者の役割を表示
-        Role role = GetRole();
-        Debug.Log($"あなたの役割: {role}");
-        dotUIManager.SetRoleText(role);
+        dotUIManager.SetRoleText(IsQuestioner());
         EshiritoriDrawingManager.instance.ResetDrawField();
         if (PhotonNetwork.LocalPlayer.ActorNumber == questionerNumber)
         {
@@ -153,11 +151,6 @@ public class EshiritoriManager : MonoBehaviourPunCallbacks
             return PhotonNetwork.PlayerList.Length;
         }
         return questionerNumber - 1;
-    }
-
-    private Role GetRole()
-    {
-        return PhotonNetwork.LocalPlayer.ActorNumber == questionerNumber ? Role.Questioner : Role.Answerer;
     }
 
     public void SetAnswer(string answer) 

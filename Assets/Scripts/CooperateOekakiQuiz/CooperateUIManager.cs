@@ -109,9 +109,9 @@ public class CooperateUIManager : MonoBehaviour
         roleText.text = $"Drawer：{name1} & {name2}";
     }
 
-    public void SetThemeText(Role role, string theme)
+    public void SetThemeText(bool isQuestioner, string theme)
     {
-        themeText.text = role == Role.Questioner ? "お題：" + theme : "お題は何でしょう？";
+        themeText.text = isQuestioner == true ? "お題：" + theme : "お題は何でしょう？";
     }
 
     public void OnClickSizeApplyButton()

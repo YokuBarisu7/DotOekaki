@@ -4,6 +4,8 @@ using UnityEngine;
 [CustomEditor(typeof(GoogleSheetLoader))]
 public class GoogleSheetLoaderEditor : Editor
 {
+    [SerializeField] int mode;
+
     public override void OnInspectorGUI()
     {
         // デフォルトのインスペクタ描画
@@ -13,12 +15,7 @@ public class GoogleSheetLoaderEditor : Editor
         GoogleSheetLoader myScript = (GoogleSheetLoader)target;
         if (GUILayout.Button("Load Data From Google Sheet Normal"))
         {
-            myScript.LoadDataFromGoogleSheet(0);
-        }
-
-        if (GUILayout.Button("Load Data From Google Sheet Tsuyu"))
-        {
-            myScript.LoadDataFromGoogleSheet(1);
+            myScript.LoadDataFromGoogleSheet(mode, null);
         }
 
         if (myScript.questions != null && myScript.questions.Count > 0)

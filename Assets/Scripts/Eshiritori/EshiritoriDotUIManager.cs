@@ -48,14 +48,9 @@ public class EshiritoriDotUIManager : MonoBehaviour
         }
     }
 
-    public void SetRoleText(Role role)
+    public void SetRoleText(bool isQuestioner)
     {
-        roleText.text = role == Role.Questioner ? "あなたは描き手です" : "あなたは回答者です";
-    }
-
-    public void SetThemeText(Role role, string theme)
-    {
-        themeText.text = role == Role.Questioner ? "お題：" + theme : "お題は何でしょう？";
+        roleText.text = isQuestioner == true ? "あなたは描き手です" : "あなたは回答者です";
     }
 
     public void OnClickUndoButton()

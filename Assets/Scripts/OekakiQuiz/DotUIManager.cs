@@ -118,12 +118,12 @@ public class DotUIManager : MonoBehaviour
 
     public void SetRoleText(string name)
     {
-        roleText.text = $"出題者(描く人)：{name}";
+        roleText.text = $"Drawer：{name}";
     }
 
-    public void SetThemeText(Role role, string theme)
+    public void SetThemeText(bool isQuestioner, string theme)
     {
-        themeText.text = role == Role.Questioner ? "お題：" + theme : "お題は何でしょう？";
+        themeText.text = isQuestioner == true ? "お題：" + theme : "お題は何でしょう？";
     }
 
     public void OnClickSizeApplyButton()

@@ -7808,7 +7808,7 @@ MonoBehaviour:
   joinErrorText: {fileID: 1279460002}
   roomCreateButton: {fileID: 1352246599}
   roomJoinButton: {fileID: 1664824528}
-  tsuyuToggle: {fileID: 348999614}
+  modeToggle: {fileID: 348999614}
   playerCount: 4
   textColors: {fileID: 11400000, guid: 81dd95fa41fbe9f4cbe2df9059af87e0, type: 2}
   quizGameStartButton: {fileID: 563766435}
@@ -11876,8 +11876,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 25, y: 0}
-  m_SizeDelta: {x: -50, y: 0}
+  m_AnchoredPosition: {x: 32.5, y: 2.5}
+  m_SizeDelta: {x: -65, y: -5}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &970558693
 MonoBehaviour:
@@ -11912,7 +11912,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: "\u300C\u6885\u96E8\u300D\u30E2\u30FC\u30C9"
+  m_Text: "\u3080\u305A\u304B\u3057\u3044\u30E2\u30FC\u30C9"
 --- !u!222 &970558694
 CanvasRenderer:
   m_ObjectHideFlags: 0

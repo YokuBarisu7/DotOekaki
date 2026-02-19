@@ -558,7 +558,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 911527002}
         m_TargetAssemblyTypeName: GameManager, Assembly-CSharp
-        m_MethodName: StartGame
+        m_MethodName: OnClickStartGame
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -7487,7 +7487,7 @@ MonoBehaviour:
   timerText: {fileID: 1373899117}
   countText: {fileID: 1562352275}
   questionCount: 0
-  questionCountLeft: 0
+  currentRound: 0
   timeLimit: 180
   isFinished: 0
   resultList: {fileID: 926407956}
@@ -10827,7 +10827,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 911527002}
         m_TargetAssemblyTypeName: GameManager, Assembly-CSharp
-        m_MethodName: RestartGame
+        m_MethodName: OnClickRestartGame
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
