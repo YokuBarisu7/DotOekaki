@@ -118,7 +118,6 @@ public class DengonThemeGenerator : MonoBehaviourPunCallbacks
 
 
     // コールバック：ルームプロパティが更新されたとき
-
     public override void OnRoomPropertiesUpdate(Hashtable changed)
     {
         if (changed.ContainsKey(KEY_JSON) || changed.ContainsKey(KEY_VER))

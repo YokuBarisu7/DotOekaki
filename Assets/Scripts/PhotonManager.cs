@@ -1,19 +1,11 @@
 using Photon.Pun;
 using Photon.Realtime;
 using UnityEngine;
-using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 
 public class PhotonManager : MonoBehaviourPunCallbacks
 {
     public static PhotonManager instance;
-
-    [SerializeField] GameObject startButton;
-    [SerializeField] Text playerCountText;
-    [SerializeField] Text roomNameText;
-    [SerializeField] Text joinedPlayerText;
-
-    private Button startBtn;
 
     private enum LeaveDestination
     { 
@@ -33,11 +25,6 @@ public class PhotonManager : MonoBehaviourPunCallbacks
             return;
         }
         instance = this;
-
-        if (IsInTitleScene)
-        {
-            startBtn = startButton.GetComponent<Button>();
-        }
     }
 
     void Start()
@@ -57,13 +44,6 @@ public class PhotonManager : MonoBehaviourPunCallbacks
         Debug.Log("Photon に接続成功！");
     }
 
-    // 参加ボタンが押されたときに呼び出される
-    public void JoinRandomRoom()
-    {
-        Debug.Log("ランダムルームに参加します。");
-        PhotonNetwork.JoinRandomRoom();
-    }
-
     // === ランダムルームが存在しない場合、新しいルームを作成 ===
     public override void OnJoinRandomFailed(short returnCode, string message)
     {
@@ -71,61 +51,11 @@ public class PhotonManager : MonoBehaviourPunCallbacks
 
         var roomOptions = new RoomOptions
         {
-            MaxPlayers = 2, // 最大プレイヤー数4人
+            MaxPlayers = 4, // 最大プレイヤー数4人
             IsOpen = true, // ルームを一般公開する
             IsVisible = true, // ルームがロビーで表示される
         };
         PhotonNetwork.CreateRoom(null, roomOptions);
-    }
-
-    // === ルームに参加したときのコールバック ===
-    public override void OnJoinedRoom()
-    {
-        PhotonNetwork.LocalPlayer.NickName = PlayerPrefs.GetString("PlayerName", $"Player{Random.Range(1000, 9999)}");
-        PlayerPrefs.Save();
-
-        roomNameText.text = $"ルーム名：{PhotonNetwork.CurrentRoom.Name}";
-
-        // ホストのみゲームルールを選んで開始することができる
-        startButton.SetActive(PhotonNetwork.IsMasterClient);
-
-        UpdateLobbyUI();
-    }
-
-    private void UpdateLobbyUI()
-    {
-        playerCountText.text = $"現在のプレイヤー数: {PhotonNetwork.CurrentRoom.PlayerCount} / {PhotonNetwork.CurrentRoom.MaxPlayers}";
-        joinedPlayerText.text = BuildPlayerListText();
-        UpdateStartButtonState();
-    }
-
-    private string BuildPlayerListText()
-    {
-        var players = PhotonNetwork.PlayerList;
-        System.Text.StringBuilder sb = new System.Text.StringBuilder(128);
-
-        for (int i = 0; i < players.Length; i++) 
-        {
-            var p = players[i];
-            bool isHots = p.IsMasterClient;
-            sb.Append(p.NickName);
-            if (isHots) sb.Append("[HOST]");
-            if (i < players.Length - 1) sb.Append('\n');
-        }
-        return sb.ToString();
-    }
-
-    private void UpdateStartButtonState()
-    { 
-        startButton.SetActive (PhotonNetwork.IsMasterClient);
-        startBtn.interactable = PhotonNetwork.IsMasterClient && PhotonNetwork.CurrentRoom.PlayerCount == PhotonNetwork.CurrentRoom.MaxPlayers;
-    }
-
-    // 新しいプレイヤーが参加したときのコールバック
-    public override void OnPlayerEnteredRoom(Player newPlayer)
-    {
-        Debug.Log($"{newPlayer.NickName}が参加しました。");
-        UpdateLobbyUI();
     }
 
     // プレイヤーが退出したときのコールバック
@@ -133,11 +63,7 @@ public class PhotonManager : MonoBehaviourPunCallbacks
     {
         Debug.Log($"{otherPlayer.NickName}がルームから退出しました。");
 
-        if (IsInTitleScene)
-        {
-            UpdateLobbyUI();
-            return;
-        }
+        if (IsInTitleScene) return;
 
         // 誰かがルームを抜けてしまった場合、ルームを解散してタイトル画面に戻る
         if (PhotonNetwork.IsMasterClient)
@@ -152,15 +78,12 @@ public class PhotonManager : MonoBehaviourPunCallbacks
     {
         Debug.Log($"ホストが {newMasterClient.NickName} に変更されました。");
 
-        if (IsInTitleScene)
-        {
-            UpdateLobbyUI();
-            return;
-        }
-
         // ゲーム中にホストが落ちた＝解散
-        Debug.Log("ホストが落ちたので解散します。");
-        LeaveRoomToTitleScene();
+        if (!IsInTitleScene)
+        {
+            Debug.Log("ホストが落ちたので解散します。");
+            LeaveRoomToTitleScene();
+        }
     }
 
     public void LeaveLobbyToPrevUI()

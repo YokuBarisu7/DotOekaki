@@ -7806,8 +7806,12 @@ MonoBehaviour:
   playerCountDropdown: {fileID: 758492976}
   createErrorText: {fileID: 256295750}
   joinErrorText: {fileID: 1279460002}
+  playerCountText: {fileID: 1976861306}
+  roomNameText: {fileID: 1161162784}
+  joinedPlayerText: {fileID: 2011634754}
   roomCreateButton: {fileID: 1352246599}
   roomJoinButton: {fileID: 1664824528}
+  startButton: {fileID: 2033852788}
   modeToggle: {fileID: 348999614}
   playerCount: 4
   textColors: {fileID: 11400000, guid: 81dd95fa41fbe9f4cbe2df9059af87e0, type: 2}
@@ -9918,10 +9922,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 15eefd82cba3fd141a3a0bc424c12f0a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  startButton: {fileID: 2033852788}
-  playerCountText: {fileID: 1976861306}
-  roomNameText: {fileID: 1161162784}
-  joinedPlayerText: {fileID: 2011634754}
 --- !u!224 &729401692
 RectTransform:
   m_ObjectHideFlags: 0
@@ -16516,7 +16516,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 596508056}
         m_TargetAssemblyTypeName: UIManager, Assembly-CSharp
-        m_MethodName: OnCreateRoomButtonClick
+        m_MethodName: OnCreatePasswordRoomButtonClick
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -17141,9 +17141,9 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 729401691}
-        m_TargetAssemblyTypeName: PhotonManager, Assembly-CSharp
-        m_MethodName: UpdatePlayerListUI
+      - m_Target: {fileID: 596508056}
+        m_TargetAssemblyTypeName: UIManager, Assembly-CSharp
+        m_MethodName: UpdateLobbyUI
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -19961,7 +19961,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 596508056}
         m_TargetAssemblyTypeName: UIManager, Assembly-CSharp
-        m_MethodName: OnJoinRoomButtonClick
+        m_MethodName: OnJoinPasswordRoomButtonClick
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -25385,9 +25385,9 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 729401691}
-        m_TargetAssemblyTypeName: PhotonManager, Assembly-CSharp
-        m_MethodName: JoinRandomRoom
+      - m_Target: {fileID: 596508056}
+        m_TargetAssemblyTypeName: UIManager, Assembly-CSharp
+        m_MethodName: OnClickJoinRandomRoom
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}

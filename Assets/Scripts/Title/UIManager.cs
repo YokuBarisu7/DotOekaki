@@ -11,11 +11,16 @@ public class UIManager : MonoBehaviourPunCallbacks
     [SerializeField] Dropdown playerCountDropdown;
     [SerializeField] Text createErrorText;
     [SerializeField] Text joinErrorText;
+    [SerializeField] Text playerCountText;
+    [SerializeField] Text roomNameText;
+    [SerializeField] Text joinedPlayerText;
     [SerializeField] Button roomCreateButton;
     [SerializeField] Button roomJoinButton;
+    [SerializeField] GameObject startButton;
     [SerializeField] Toggle modeToggle;
     [SerializeField] int playerCount;
     [SerializeField] ColorPalette textColors;
+    private Button startBtn;
 
     // おえかきクイズモード
     [SerializeField] Button quizGameStartButton;
@@ -93,6 +98,7 @@ public class UIManager : MonoBehaviourPunCallbacks
         createPasswordInputField.onValueChanged.AddListener(OnCreatePasswordInputFieldValueChanged);
         joinPasswordInputField.onValueChanged.AddListener(OnJoinPasswordInputFieldValueChanged);
         playerCountDropdown.onValueChanged.AddListener(OnPlayerCountDropdownValueChanged);
+        startBtn = startButton.GetComponent<Button>();
     }
 
     private void InitModeInput()
@@ -128,7 +134,7 @@ public class UIManager : MonoBehaviourPunCallbacks
 
 
     // --------------- ボタン ---------------
-    public void OnCreateRoomButtonClick()
+    public void OnCreatePasswordRoomButtonClick()
     {
         var roomOptions = new RoomOptions();
         roomOptions.MaxPlayers = (byte)playerCount;
@@ -164,24 +170,103 @@ public class UIManager : MonoBehaviourPunCallbacks
         createErrorText.text = message;
     }
 
-    public void OnJoinRoomButtonClick()
+    public void OnJoinPasswordRoomButtonClick()
     {
         PhotonNetwork.JoinRoom(joinPasswordInputField.text);
+    }
+
+    // 参加ボタンが押されたときに呼び出される
+    public void OnClickJoinRandomRoom()
+    {
+        Debug.Log("ランダムルームに参加します。");
+
+        var name = PlayerPrefs.GetString("PlayerName", "");
+        if (string.IsNullOrWhiteSpace(name))
+            name = $"Player{Random.Range(1000, 9999)}";
+
+        PhotonNetwork.NickName = name;
+        PlayerPrefs.SetString("PlayerName", name);
+        PlayerPrefs.Save();
+
+        PhotonNetwork.JoinRandomRoom();
     }
 
     // ルーム参加成功時のコールバック
     public override void OnJoinedRoom()
     {
         PanelController.instance.OnClickButton(4);
+
+        roomNameText.text = $"ルーム名：{PhotonNetwork.CurrentRoom.Name}";
+
+        // ホストのみゲームルールを選んで開始することができる
+        UpdateLobbyUI();
     }
 
-    // 協力おえかきモードはplayerが３人以上で選択可能(playerが入退室したときに実行)
-    public override void OnPlayerEnteredRoom(Player newPlayer) => RefreshCooperateButton();
-    public override void OnPlayerLeftRoom(Player otherPlayer) => RefreshCooperateButton();
-
-    private void RefreshCooperateButton()
+    // 協力おえかきモードはplayerが３人以上でプレイ可能(playerが入退室したときに実行)
+    public override void OnPlayerEnteredRoom(Player newPlayer)
     {
-        cooperateQuizButton.interactable = PhotonNetwork.IsMasterClient && PhotonNetwork.CurrentRoom.PlayerCount >= 3;
+        Debug.Log($"{newPlayer.NickName}が参加しました。");
+        UpdateLobbyUI();
+    }
+    public override void OnPlayerLeftRoom(Player otherPlayer)
+    {
+        UpdateLobbyUI();
+    }
+
+    public void UpdateLobbyUI()
+    {
+        playerCountText.text = $"現在のプレイヤー数: {PhotonNetwork.CurrentRoom.PlayerCount} / {PhotonNetwork.CurrentRoom.MaxPlayers}";
+        joinedPlayerText.text = BuildPlayerListText();
+        UpdateStartButtonState();
+    }
+
+    private string BuildPlayerListText()
+    {
+        var players = PhotonNetwork.PlayerList;
+        System.Text.StringBuilder sb = new System.Text.StringBuilder(128);
+
+        for (int i = 0; i < players.Length; i++)
+        {
+            var p = players[i];
+            bool isHots = p.IsMasterClient;
+            sb.Append(p.NickName);
+            if (isHots) sb.Append("[HOST]");
+            if (i < players.Length - 1) sb.Append('\n');
+        }
+        return sb.ToString();
+    }
+
+    private void UpdateStartButtonState()
+    {
+        bool isMaster = PhotonNetwork.IsMasterClient;
+        int count = PhotonNetwork.CurrentRoom?.PlayerCount ?? 0;
+
+        startButton.SetActive(isMaster);
+        startBtn.interactable = isMaster && count >= 2;
+
+        ResetGameButtons();
+        if (!isMaster) return;
+
+        bool canStart = count >= 2;
+        bool canCoopQuiz = count >= 3;
+
+        // 2人以上なら有効
+        quizGameStartButton.interactable = canStart;
+        shiritoriStartButton.interactable = canStart;
+        dengonStartButton.interactable = canStart;
+
+        // 協力クイズは3人以上で有効
+        cooperateQuizButton.interactable = canCoopQuiz;
+        cooperateQuizStartButton.interactable = canCoopQuiz;
+    }
+
+    private void ResetGameButtons()
+    {
+        quizGameStartButton.interactable = false;
+        cooperateQuizButton.interactable = false;
+        cooperateQuizStartButton.interactable = false;
+        shiritoriStartButton.interactable = false;
+        dengonStartButton.interactable = false;
     }
 
     // ルーム参加失敗時のコールバック

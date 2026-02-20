@@ -30,6 +30,7 @@ public class DotUIManager : MonoBehaviour
     [SerializeField] GameObject sizeChangerPanel;
     [SerializeField] GameObject colorSpectrum;
     [SerializeField] GameObject backPanel;
+    [SerializeField] Slider brushSizeSlider;
     [SerializeField] ColorPalette palette;
 
     DrawingManager dm;
@@ -47,6 +48,7 @@ public class DotUIManager : MonoBehaviour
         {
             PhotonManager.instance.OnLeaveRoomAndDestroy();
         });
+        brushSizeSlider.onValueChanged.AddListener(OnBrushSizeSliderChanged);
         mekakushiToggle.onValueChanged.AddListener(_ => OnMekakushiToggle());
     }
 
@@ -59,6 +61,7 @@ public class DotUIManager : MonoBehaviour
         dm.OnHistoryChanged += OnHistoryChanged;
         dm.OnHasDrawingChanged += OnHasDrawingChanged;
         dm.OnColorChanged += OnColorChanged;
+        dm.OnBrushSizeChanged += OnBrushSizeChanged;
         widthInputField.OnStateChanged += OnSizeInputFieldValueChanged;
         heightInputField.OnStateChanged += OnSizeInputFieldValueChanged;
         questionCountInputField.OnStateChanged += OnSettingInputFieldValueChanged;
@@ -67,14 +70,13 @@ public class DotUIManager : MonoBehaviour
         RefreshAllUI();
     }
 
+    // 初期化処理
     public void Initialize()
     {
-        // 初期化処理
         sizeChangerPanel.SetActive(false);
         colorSpectrum.SetActive(false);
         backPanel.SetActive(false);
         mekakushiToggle.isOn = false;
-        DrawingManager.instance.InitializeDrawField();
     }
 
     private void RefreshAllUI()
@@ -116,6 +118,12 @@ public class DotUIManager : MonoBehaviour
         currentColor.color = color;
     }
 
+    private void OnBrushSizeChanged(int size)
+    {
+        if ((int)brushSizeSlider.value != size)
+            brushSizeSlider.SetValueWithoutNotify(size);
+    }
+
     public void SetRoleText(string name)
     {
         roleText.text = $"Drawer：{name}";
@@ -134,11 +142,12 @@ public class DotUIManager : MonoBehaviour
 
     public void OnClickUndoButton() => dm.UndoButton();
     public void OnClickRedoButton() => dm.RedoButton();
-    public void OnClickAllClearButton() => dm.AllClear();
+    public void OnClickAllClearButton() => dm.AllClearButton();
     public void OnClickColor(int index) => dm.ChangeColor(palette.colors[index]);
     public void OnClickToolButton(int index) => dm.ChangeMode((DrawingManager.ToolMode)index);
     public void OnClickEraserButton() => dm.ChangeColor(new Color(0, 0, 0, 0));
     public void ToggleIsDrawable() => dm.SetDrawable(!dm.IsDrawable);
+    public void OnBrushSizeSliderChanged(float v) => dm.SetBrushSize((int)v);
 
     public void OnSizeInputFieldValueChanged()
     {

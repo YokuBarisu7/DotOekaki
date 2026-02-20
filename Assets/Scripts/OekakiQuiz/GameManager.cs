@@ -10,8 +10,8 @@ public class GameManager : MonoBehaviourPunCallbacks
 {
     public static GameManager instance;
 
-    ThemeGenerator themeGenerator;
-    DotUIManager dotUIManager;
+    [SerializeField] ThemeGenerator themeGenerator;
+    [SerializeField] DotUIManager dotUIManager;
     [SerializeField] QuizQuestion currentTheme;
 
     private List<int> questionerOrder = new List<int>(); // 出題者の順番を保持するリスト
@@ -63,9 +63,11 @@ public class GameManager : MonoBehaviourPunCallbacks
         {
             Destroy(gameObject);
         }
+    }
 
-        themeGenerator = FindAnyObjectByType<ThemeGenerator>();
-        dotUIManager = FindAnyObjectByType<DotUIManager>();
+    private void OnDestroy()
+    {
+        themeGenerator.OnThemeApplied -= OnThemeApplied;
     }
 
     private void Start()
@@ -313,8 +315,9 @@ public class GameManager : MonoBehaviourPunCallbacks
         currentRound = round;
 
         dotUIManager.Initialize(); // UIの初期化
-        currentTheme = themeGenerator.GetTheme(currentRound); // お題をセット
+        DrawingManager.instance.InitializeDrawField(); // DrawFieldの初期化
         DrawingManager.instance.SetDrawable(PhotonNetwork.LocalPlayer.ActorNumber == questionerNumber); // 出題者のみ描画可能に
+        currentTheme = themeGenerator.GetTheme(currentRound); // お題をセット
         UpdateText(); // UIにお題を反映
         countText.text = $"残り\n{questionCount - currentRound} 問";
     }
@@ -457,6 +460,10 @@ public class GameManager : MonoBehaviourPunCallbacks
         {
             Destroy(child.gameObject);
         }
+        foreach (var tex in savedPictures)
+        {
+            Destroy(tex);
+        }
         savedPictures.Clear();
     }
 
@@ -547,12 +554,13 @@ public class GameManager : MonoBehaviourPunCallbacks
 
     [PunRPC]
     private void SavedPicture()
-    { 
-        Texture2D texture = new Texture2D(DrawingManager.instance.texture.width, DrawingManager.instance.texture.height, TextureFormat.RGBA32, false);
-        texture.filterMode = FilterMode.Point;
-        texture.SetPixels(DrawingManager.instance.texture.GetPixels());
-        texture.Apply();
-        savedPictures.Add(texture);
+    {
+        var src = DrawingManager.instance.texture;
+        Texture2D copy = new Texture2D(src.width, src.height, TextureFormat.RGBA32, false);
+        copy.filterMode = FilterMode.Point;
+        copy.SetPixels32(src.GetPixels32());
+        copy.Apply();
+        savedPictures.Add(copy);
     }
 
     private void DisplaySavedPictures()
@@ -563,6 +571,9 @@ public class GameManager : MonoBehaviourPunCallbacks
             Transform rawImageTransform = pictureEntry.transform.Find("RawImage");
             RawImage rawImage = rawImageTransform.GetComponent<RawImage>();
             rawImage.texture = picture;
+
+            var fitter = rawImage.GetComponent<AspectRatioFitter>();
+            fitter.aspectRatio = (float)picture.width / picture.height;
         }
     }
 
@@ -579,6 +590,5 @@ public class GameManager : MonoBehaviourPunCallbacks
         MoveGamePanel(new Vector2(-2000, 0));
         DisplayResults();
         DisplaySavedPictures();
-        dotUIManager.Initialize();
     }    
 }

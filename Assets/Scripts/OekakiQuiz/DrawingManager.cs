@@ -28,8 +28,8 @@ public class DrawingManager : MonoBehaviourPunCallbacks
 
 
     Color32[] clearBuffer; // ClearCanvasで使用
-    Stack<Color[]> undoStack; // 元に戻すためのスタック
-    Stack<Color[]> redoStack; // やり直しのためのスタック
+    Stack<Color32[]> undoStack; // 元に戻すためのスタック
+    Stack<Color32[]> redoStack; // やり直しのためのスタック
     Vector2Int? lastPoint = null; // 前回の描画位置
     Vector2Int? startPoint = null; // 直線モードの始点
     Vector2Int startPixel; // 円モード、長方形モードの始点
@@ -70,8 +70,8 @@ public class DrawingManager : MonoBehaviourPunCallbacks
         }
 
         // スタックの初期生成
-        undoStack = new Stack<Color[]>();
-        redoStack = new Stack<Color[]>();
+        undoStack = new Stack<Color32[]>();
+        redoStack = new Stack<Color32[]>();
     }
 
     private void Start()
@@ -81,21 +81,20 @@ public class DrawingManager : MonoBehaviourPunCallbacks
 
     public void InitializeDrawField()
     {
-        // ゲーム開始時は黒色ペンモード
-        drawColor = Color.black;
-        brushSize = 1;
-        currentMode = ToolMode.Pen;
-
         // Texture2Dを作成
         CreateTexture(initialWidth, initialHeight);
-        SetDrawable(true);
+        SetDrawFieldSize(initialWidth, initialHeight);
+
+        // ゲーム開始時は黒色ペンモード
+        ChangeColor(Color.black);
+        SetBrushSize(1);
+        ChangeMode(ToolMode.Pen);
     }
 
     private void Update()
     {
         if (!isDrawable || texture == null) return;
         if (!TryGetMouseLocalPoint(out var localPoint)) return;
-
 
         switch (currentMode)
         {
@@ -138,7 +137,7 @@ public class DrawingManager : MonoBehaviourPunCallbacks
         drawingPanel.texture = texture;
         undoStack.Clear();
         redoStack.Clear();
-        undoStack.Push(texture.GetPixels());
+        undoStack.Push(texture.GetPixels32());
         drawer = new DrawingUtils(texture, drawColor, brushSize);
     }
 
@@ -249,7 +248,7 @@ public class DrawingManager : MonoBehaviourPunCallbacks
             {
                 int actorNumber = PhotonNetwork.LocalPlayer.ActorNumber;
                 photonView.RPC("DrawShapeRPC", RpcTarget.All,
-                    actorNumber, startPoint.Value.x, startPoint.Value.y, p.x, p.y,
+                    actorNumber, (int)currentMode, startPoint.Value.x, startPoint.Value.y, p.x, p.y,
                     drawColor.r, drawColor.g, drawColor.b, drawColor.a, brushSize);
             }
             else
@@ -282,7 +281,7 @@ public class DrawingManager : MonoBehaviourPunCallbacks
             {
                 int actorNumber = PhotonNetwork.LocalPlayer.ActorNumber;
                 photonView.RPC("DrawShapeRPC", RpcTarget.All,
-                    actorNumber, startPixel.x, startPixel.y, end.x, end.y,
+                    actorNumber, (int)currentMode, startPixel.x, startPixel.y, end.x, end.y,
                     drawColor.r, drawColor.g, drawColor.b, drawColor.a, brushSize);
             }
             else
@@ -377,40 +376,31 @@ public class DrawingManager : MonoBehaviourPunCallbacks
 
     private void DrawShape(Vector2Int start, Vector2Int end)
     {
-        if (currentMode == ToolMode.Line)
+        switch (currentMode)
         {
-            drawer.DrawLine(start, end);
+            case ToolMode.Line: drawer.DrawLine(start, end); break;
+            case ToolMode.Circle: drawer.DrawCircle(start, end); break;
+            case ToolMode.Rectangle: drawer.DrawRectangle(start, end); break;
         }
-        else if (currentMode == ToolMode.Circle)
-        {
-            drawer.DrawCircle(start, end);
-        }
-        else if (currentMode == ToolMode.Rectangle)
-        {
-            drawer.DrawRectangle(start, end);
-        }
+
         texture.Apply();
         SaveUndo();
     }
 
     [PunRPC]
-    private void DrawShapeRPC(int actorNumber, int startX, int startY, int endX, int endY, float r, float g, float b, float a, int size)
+    private void DrawShapeRPC(int actorNumber, int modeInt, int startX, int startY, int endX, int endY, float r, float g, float b, float a, int size)
     {
         var color = new Color(r, g, b, a);
         var tempDrawer = new DrawingUtils(texture, color, size);
+        var mode = (ToolMode)modeInt;
 
-        if (currentMode == ToolMode.Line)
-        {
-            tempDrawer.DrawLine(new Vector2Int(startX, startY), new Vector2Int(endX, endY));
+        switch (mode)
+        { 
+            case ToolMode.Line: tempDrawer.DrawLine(new Vector2Int(startX, startY), new Vector2Int(endX, endY)); break;
+            case ToolMode.Circle: tempDrawer.DrawCircle(new Vector2Int(startX, startY), new Vector2Int(endX, endY)); break;
+            case ToolMode.Rectangle: tempDrawer.DrawRectangle(new Vector2Int(startX, startY), new Vector2Int(endX, endY)); break;
         }
-        else if (currentMode == ToolMode.Circle)
-        {
-            tempDrawer.DrawCircle(new Vector2Int(startX, startY), new Vector2Int(endX, endY));
-        }
-        else if (currentMode == ToolMode.Rectangle)
-        {
-            tempDrawer.DrawRectangle(new Vector2Int(startX, startY), new Vector2Int(endX, endY));
-        }
+
         texture.Apply();
         SaveUndo();
     }
@@ -438,10 +428,9 @@ public class DrawingManager : MonoBehaviourPunCallbacks
         SaveUndo();
     }
 
-    [PunRPC]
     private void SaveUndo()
     {
-        undoStack.Push(texture.GetPixels()); // 現在の状態を保存
+        undoStack.Push(texture.GetPixels32()); // 現在の状態を保存
         redoStack.Clear(); // 新しく描画したらRedo履歴はクリア
         NotifyHistory();
         SetHasDrawing(ComputeHasDrawing());
@@ -470,13 +459,25 @@ public class DrawingManager : MonoBehaviourPunCallbacks
         }
     }
 
+    public void AllClearButton()
+    {
+        if (PhotonNetwork.InRoom)
+        {
+            photonView.RPC("AllClear", RpcTarget.All);
+        }
+        else
+        {
+            AllClear();
+        }
+    }
+
     [PunRPC]
     private void Undo()
     { 
         if (undoStackCount > 1)
         {
             redoStack.Push(undoStack.Pop());
-            texture.SetPixels(undoStack.Peek());
+            texture.SetPixels32(undoStack.Peek());
             texture.Apply();
             NotifyHistory();
             SetHasDrawing(ComputeHasDrawing());
@@ -488,28 +489,20 @@ public class DrawingManager : MonoBehaviourPunCallbacks
         if (redoStackCount > 0)
         {
             undoStack.Push(redoStack.Pop());
-            texture.SetPixels(undoStack.Peek());
+            texture.SetPixels32(undoStack.Peek());
             texture.Apply();
             NotifyHistory();
             SetHasDrawing(ComputeHasDrawing());
         }
     }
 
-    public void AllClear()
+    [PunRPC]
+    private void AllClear()
     {
-        if (PhotonNetwork.InRoom)
-        {
-            photonView.RPC("ClearCanvas", RpcTarget.All);
-            photonView.RPC("SaveUndo", RpcTarget.All, false);
-        }
-        else
-        {
-            ClearCanvas();
-            SaveUndo();
-        }
+        ClearCanvas();
+        SaveUndo();
     }
 
-    [PunRPC]
     private void ClearCanvas()
     {
         if (texture == null) return;
@@ -590,14 +583,13 @@ public class DrawingManager : MonoBehaviourPunCallbacks
         OnColorChanged?.Invoke(drawColor);
     }
 
-    public void OnValueChangedBrushSize(Slider slider)
+    public void SetBrushSize(int size)
     {
-        int newSize = (int)slider.value;
-        if (brushSize == newSize) return;
+        size = Mathf.Clamp(size, 1, 7);
+        if (brushSize == size) return;
 
-        brushSize = newSize;
+        brushSize = size;
         drawer = new DrawingUtils(texture, drawColor, brushSize);
-
         OnBrushSizeChanged?.Invoke(brushSize);
     }
 }
