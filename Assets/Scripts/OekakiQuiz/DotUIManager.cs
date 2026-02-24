@@ -70,15 +70,6 @@ public class DotUIManager : MonoBehaviour
         RefreshAllUI();
     }
 
-    // 初期化処理
-    public void Initialize()
-    {
-        sizeChangerPanel.SetActive(false);
-        colorSpectrum.SetActive(false);
-        backPanel.SetActive(false);
-        mekakushiToggle.isOn = false;
-    }
-
     private void RefreshAllUI()
     {
         OnDrawableChanged(dm.IsDrawable);
@@ -86,6 +77,15 @@ public class DotUIManager : MonoBehaviour
         OnHistoryChanged(dm.undoStackCount, dm.redoStackCount);
         OnHasDrawingChanged(dm.HasDrawingCached);
         OnColorChanged(dm.DrawColor);
+    }
+
+    // 初期化処理
+    public void Initialize()
+    {
+        sizeChangerPanel.SetActive(false);
+        colorSpectrum.SetActive(false);
+        backPanel.SetActive(false);
+        mekakushiToggle.isOn = false;
     }
 
     private void OnDrawableChanged(bool drawable)

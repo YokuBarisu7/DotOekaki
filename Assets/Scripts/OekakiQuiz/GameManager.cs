@@ -35,7 +35,7 @@ public class GameManager : MonoBehaviourPunCallbacks
     private bool isTimerActive;
     private bool isTimeUp;
 
-    [SerializeField] int mode; // お題の難易度（ふつう：０、難しい：１）
+    [SerializeField] int difficulty; // お題の難易度（ふつう：０、難しい：１）
 
     [SerializeField] bool isFinished;
 
@@ -106,7 +106,7 @@ public class GameManager : MonoBehaviourPunCallbacks
     {
         if (themeGenerator.GetTheme(0) == null)
         {
-            Debug.LogWarning("配布されたQuizQuestionが不正の可能性あり");
+            Debug.LogWarning("配布されたQuizQuestionが不正");
             return;
         }
         SetReady(true);
@@ -199,7 +199,7 @@ public class GameManager : MonoBehaviourPunCallbacks
 
         questionCount = PlayerPrefs.GetInt("QuestionCount", 5);
         timeLimit = PlayerPrefs.GetInt("LimitTime", 180);
-        mode = PlayerPrefs.GetInt("Mode", 0);
+        difficulty = PlayerPrefs.GetInt("Difficulty", 0);
 
         photonView.RPC("SyncOption", RpcTarget.All, questionCount, timeLimit);
         photonView.RPC("SyncSettings", RpcTarget.All);
@@ -208,7 +208,7 @@ public class GameManager : MonoBehaviourPunCallbacks
 
         SetReady(false);
 
-        themeGenerator.BroadcastThemes(mode); // お題の生成と同期
+        themeGenerator.BroadcastThemes(difficulty); // お題の生成と同期
     }
 
     // 設定変更せずにもう一度プレイする時にボタンで実行される
@@ -223,7 +223,7 @@ public class GameManager : MonoBehaviourPunCallbacks
 
         SetReady(false);
 
-        themeGenerator.BroadcastThemes(mode); // お題のシャッフルと同期
+        themeGenerator.BroadcastThemes(difficulty); // お題のシャッフルと同期
     }
 
     [PunRPC]

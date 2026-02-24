@@ -148,18 +148,14 @@ public class PreviewGenerator : MonoBehaviour
     private void DrawShape(Vector2Int start, Vector2Int end)
     {
         ClearCanvas();
-        if (currentPreviewMode == ToolMode.Line)
+
+        switch (currentPreviewMode)
         {
-            drawer.DrawLine(start, end);
+            case ToolMode.Line: drawer.DrawLine(start, end); break;
+            case ToolMode.Circle: drawer.DrawCircle(start, end); break;
+            case ToolMode.Rectangle: drawer.DrawRectangle(start, end); break;
         }
-        else if (currentPreviewMode == ToolMode.Circle)
-        {
-            drawer.DrawCircle(start, end);
-        }
-        else if (currentPreviewMode == ToolMode.Rectangle)
-        {
-            drawer.DrawRectangle(start, end);
-        }
+
         previewTexture.Apply();
     }
 

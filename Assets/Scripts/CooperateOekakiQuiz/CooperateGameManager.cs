@@ -1,4 +1,3 @@
-using NUnit.Framework.Internal.Commands;
 using Photon.Pun;
 using Photon.Realtime;
 using System.Collections;
@@ -11,8 +10,8 @@ public class CooperateGameManager : MonoBehaviourPunCallbacks
 {
     public static CooperateGameManager instance;
 
-    ThemeGenerator themeGenerator;
-    CooperateUIManager dotUIManager;
+    [SerializeField] ThemeGenerator themeGenerator;
+    [SerializeField] CooperateUIManager dotUIManager;
     [SerializeField] QuizQuestion currentTheme;
 
     private List<int> questionerOrder = new List<int>(); // 出題者の順番を保持するリスト
@@ -27,15 +26,16 @@ public class CooperateGameManager : MonoBehaviourPunCallbacks
     [SerializeField] Text timerText;
     [SerializeField] Text countText;
 
-    public int questionCount;
-    public int questionCountLeft;
+    [SerializeField] int questionCount;
+    [SerializeField] int currentRound;
 
-    public int timeLimit;
+    [SerializeField] int timeLimit;
     private float timeRemaining;
+    private float timerSyncCooldown;
     private bool isTimerActive;
     private bool isTimeUp;
 
-    [SerializeField] int mode;
+    [SerializeField] int difficulty;
     [SerializeField] bool isFinished;
 
     [SerializeField] Transform resultList; //結果表示用の親オブジェクト
@@ -62,9 +62,11 @@ public class CooperateGameManager : MonoBehaviourPunCallbacks
         {
             Destroy(gameObject);
         }
+    }
 
-        themeGenerator = FindAnyObjectByType<ThemeGenerator>();
-        dotUIManager = FindAnyObjectByType<CooperateUIManager>();
+    private void OnDestroy()
+    {
+        themeGenerator.OnThemeApplied -= OnThemeApplied;
     }
 
     private void Start()
@@ -72,6 +74,7 @@ public class CooperateGameManager : MonoBehaviourPunCallbacks
         if (PhotonNetwork.InRoom)
         {
             Debug.Log("オンラインモードで実行");
+            themeGenerator.OnThemeApplied += OnThemeApplied;
             loadObj.SetActive(true); // ロードオブジェクトを表示
 
             if (PhotonNetwork.IsMasterClient)
@@ -90,11 +93,25 @@ public class CooperateGameManager : MonoBehaviourPunCallbacks
 
             InitializePlayerPoints();
         }
-        else
+    }
+
+    private void OnThemeApplied(int ver)
+    {
+        if (themeGenerator.GetTheme(0) == null)
         {
-            Debug.Log("オフラインモードで実行");
-            timerText.gameObject.SetActive(false);
+            Debug.LogWarning("配布されたQuizQuestionが不正");
+            return;
         }
+        SetReady(true);
+    }
+
+    private void SetReady(bool isReady)
+    {
+        var props = new ExitGames.Client.Photon.Hashtable
+        {
+            { "Ready", isReady }
+        };
+        PhotonNetwork.LocalPlayer.SetCustomProperties(props);
     }
 
     public override void OnPlayerPropertiesUpdate(Player targetPlayer, ExitGames.Client.Photon.Hashtable changedProps)
@@ -126,18 +143,13 @@ public class CooperateGameManager : MonoBehaviourPunCallbacks
         // 全員が準備完了状態ならば、ゲーム開始の処理を行う
         if (PhotonNetwork.IsMasterClient)
         {
+            currentRound = -1;
             GenerateQuestionerOrder(); // 出題者の順番を生成
-            photonView.RPC("SetQuestioner", RpcTarget.All);
+            MasterAdvanceRound();
             photonView.RPC("StartTimer", RpcTarget.All); // タイマーを開始
             photonView.RPC("SetLoadObj", RpcTarget.All, false); // ロードオブジェクトを非表示
         }
     }
-
-    // ゲーム開始時の流れ
-    // ①前シーンで設定したパラメータをSyncOptionでホストと同期
-    // ②ホストが出題者の順番をGenerateQuestionerOrderで生成
-    // ③ホストがSetQuestionerで出題者を設定し同期する
-    // ④タイマーをセットし、スタート
 
     private void Update()
     {
@@ -145,16 +157,15 @@ public class CooperateGameManager : MonoBehaviourPunCallbacks
         {
             if (PhotonNetwork.IsMasterClient)
             {
-                if (questionCountLeft < 0 && !isFinished)
-                {
-                    Invoke("GameFinished", 2.8f);
-                    isFinished = true;
-                }
-
-                if (isTimerActive && timeRemaining > 0 && questionCountLeft >= 0)
+                if (isTimerActive && timeRemaining > 0 && currentRound < questionCount)
                 {
                     timeRemaining -= Time.deltaTime;
-                    photonView.RPC("SyncTimer", RpcTarget.Others, timeRemaining);
+                    timerSyncCooldown -= Time.deltaTime;
+                    if (timerSyncCooldown <= 0f)
+                    {
+                        timerSyncCooldown = 0.2f; // 0,2秒毎にタイマー同期
+                        photonView.RPC("SyncTimer", RpcTarget.Others, timeRemaining);
+                    }
                 }
                 else if (timeRemaining <= 0 && isTimerActive && !isTimeUp)
                 {
@@ -164,18 +175,23 @@ public class CooperateGameManager : MonoBehaviourPunCallbacks
                 }
             }
             timerText.text = $"残り\n{timeRemaining.ToString("F0")} 秒";
-            countText.text = $"残り\n{questionCountLeft} 問";
-            UpdateText();
         }
     }
 
-    public void StartGame()
+    private void TimeUp()
+    {
+        photonView.RPC("SavedPicture", RpcTarget.All);
+        photonView.RPC("ShowIncorrect", RpcTarget.All);
+        MasterAdvanceRound();
+    }
+
+    public void OnClickStartGame()
     {
         if (!PhotonNetwork.IsMasterClient) return;
 
         questionCount = PlayerPrefs.GetInt("CooperateCount", 5);
         timeLimit = PlayerPrefs.GetInt("CooperateTime", 180);
-        mode = PlayerPrefs.GetInt("Mode", 0);
+        difficulty = PlayerPrefs.GetInt("Difficulty", 0);
 
         photonView.RPC("SyncOption", RpcTarget.All, questionCount, timeLimit);
         photonView.RPC("SetQuestioner", RpcTarget.All);
@@ -183,10 +199,10 @@ public class CooperateGameManager : MonoBehaviourPunCallbacks
         photonView.RPC("MoveGamePanel", RpcTarget.All, new Vector2(0, 0));
         photonView.RPC("SetLoadObj", RpcTarget.All, true);
 
-        themeGenerator.BroadcastThemes(mode);
+        themeGenerator.BroadcastThemes(difficulty);
     }
 
-    public void RestartGame()
+    public void OnClickRestartGame()
     {
         if (!PhotonNetwork.IsMasterClient) return;
 
@@ -196,20 +212,35 @@ public class CooperateGameManager : MonoBehaviourPunCallbacks
         photonView.RPC("MoveGamePanel", RpcTarget.All, new Vector2(0, 0));
         photonView.RPC("SetLoadObj", RpcTarget.All, true);
 
-        themeGenerator.BroadcastThemes(mode);
+        themeGenerator.BroadcastThemes(difficulty);
     }
-
-    // ①
 
     [PunRPC]
     private void SyncOption(int count, int time)
     {
         questionCount = count;
-        questionCountLeft = count;
         timeLimit = time;
     }
 
-    // ②
+    [PunRPC]
+    private void SyncSettings()
+    {
+        timeRemaining = timeLimit;
+        isTimerActive = false;
+        isTimeUp = false;
+
+        InitializePlayerPoints();
+        DestroyResultPrefabs();
+
+        Invoke("StartTimer", 1.0f);
+        isFinished = false; // ゲーム開始時にリセット
+    }
+
+    [PunRPC]
+    private void MoveGamePanel(Vector2 pos)
+    {
+        panels.transform.localPosition = pos;
+    }
 
     private void GenerateQuestionerOrder()
     {
@@ -239,59 +270,57 @@ public class CooperateGameManager : MonoBehaviourPunCallbacks
         currentQuestionerIndex = 0;
     }
 
-    // ③
-
-    [PunRPC]
-    private void SetQuestioner()
+    private void MasterAdvanceRound()
     {
-        questionCountLeft--;
-        dotUIManager.Initialize(); // UIリセット
+        if (!PhotonNetwork.IsMasterClient) return;
+
+        currentRound++;
+
+        if (currentRound >= questionCount)
+        {
+            if (!isFinished)
+            {
+                Invoke("GameFinished", 3.0f);
+                isFinished = true;
+            }
+            return;
+        }
+
+        GenerateQuestionerOrder();
+
         questionerNumbers[0] = questionerOrder[currentQuestionerIndex];
         questionerNumbers[1] = questionerOrder[(currentQuestionerIndex + 1)];
+
+        photonView.RPC("ApplyRoundState", RpcTarget.All, questionerNumbers[0], questionerNumbers[1], currentRound);
+    }
+
+    [PunRPC]
+    private void ApplyRoundState(int newQ1, int newQ2, int round)
+    {
+        questionerNumbers[0] = newQ1;
+        questionerNumbers[1] = newQ2;
+        currentRound = round;
+
+        dotUIManager.Initialize(); // UIの初期化
+        CooperateDrawingManager.instance.InitializeDrawField(); // DrawFieldの初期化
         if (PhotonNetwork.LocalPlayer.ActorNumber == questionerNumbers[0] || PhotonNetwork.LocalPlayer.ActorNumber == questionerNumbers[1])
         {
-            if (PhotonNetwork.LocalPlayer.ActorNumber == questionerNumbers[0])
-            {
-                currentTheme = themeGenerator.GetTheme(questionCount - questionCountLeft);
-                photonView.RPC("UpdateCurrentTheme", RpcTarget.Others, currentTheme.question);
-            }
-            CooperateDrawingManager.instance.isDrawable = true;
+            CooperateDrawingManager.instance.SetDrawable(true);
         }
         else
         {
-            CooperateDrawingManager.instance.isDrawable = false;
+            CooperateDrawingManager.instance.SetDrawable(false);
         }
-    }
 
-    // ④
-
-    [PunRPC]
-    private void SyncSettings()
-    {
-        timeRemaining = timeLimit;
-        isTimerActive = false;
-        isTimeUp = false;
-
-        InitializePlayerPoints();
-        DestroyResultPrefabs();
-
-        Invoke("StartTimer", 1.0f);
-        isFinished = false; // ゲーム開始時にリセット
+        currentTheme = themeGenerator.GetTheme(currentRound);
+        UpdateText();
+        countText.text = $"残り\n{questionCount - currentRound} 問";
     }
 
     [PunRPC]
-    private void MoveGamePanel(Vector2 pos)
+    private void RequestAdvanceRound()
     {
-        panels.transform.localPosition = pos;
-    }
-
-
-    private void TimeUp()
-    {
-        photonView.RPC("SavedPicture", RpcTarget.All);
-        photonView.RPC("ShowIncorrect", RpcTarget.All);
-        GenerateQuestionerOrder(); // タイムアップ時に出題者の順番を再生成
-        photonView.RPC("SetQuestioner", RpcTarget.All);
+        MasterAdvanceRound();
     }
 
     // 出題者のみが正誤判定を行う
@@ -309,8 +338,14 @@ public class CooperateGameManager : MonoBehaviourPunCallbacks
             // TODO:残り秒数などでポイント増やすか検討（実際にプレイした所感で決めたい）
 
             // お題と出題者の再設定
-            GenerateQuestionerOrder();
-            photonView.RPC("SetQuestioner", RpcTarget.All);
+            if (PhotonNetwork.IsMasterClient)
+            {
+                MasterAdvanceRound();
+            }
+            else
+            {
+                photonView.RPC("RequestAdvanceRound", RpcTarget.MasterClient);
+            }
         }
     }
 
@@ -328,23 +363,24 @@ public class CooperateGameManager : MonoBehaviourPunCallbacks
 
     public void SubmitAnswer(string answer)
     {
-        photonView.RPC("CheckAnswer", RpcTarget.Others, answer, PhotonNetwork.LocalPlayer.ActorNumber);
+        var q = PhotonNetwork.CurrentRoom.GetPlayer(questionerNumbers[0]);
+        photonView.RPC("CheckAnswer", q, answer, PhotonNetwork.LocalPlayer.ActorNumber);
     }
 
     [PunRPC]
     private void ShowCorrect()
     {
-        StartCoroutine(DisplayMessage($"正解！\n「{currentTheme.question}」", 3.0f));
         isTimerActive = false;
         timeRemaining = timeLimit;
+        StartCoroutine(DisplayMessage($"正解！\n「{currentTheme.question}」", 3.0f));
     }
 
     [PunRPC]
     private void ShowIncorrect()
     {
-        StartCoroutine(DisplayMessage($"残念...不正解！\n正解は\n「{currentTheme.question}」", 3.0f));
         isTimerActive = false;
         timeRemaining = timeLimit;
+        StartCoroutine(DisplayMessage($"残念...不正解！\n正解は\n「{currentTheme.question}」", 3.0f));
     }
 
     private IEnumerator DisplayMessage(string message, float duration)
@@ -361,33 +397,26 @@ public class CooperateGameManager : MonoBehaviourPunCallbacks
     {
         if(dotUIManager == null || questionerNumbers == null)
         {
+            Debug.Log("出題者が決まってないよ");
             return;
         }
-        var player1 = PhotonNetwork.CurrentRoom.GetPlayer(questionerNumbers[0]);
-        var player2 = PhotonNetwork.CurrentRoom.GetPlayer(questionerNumbers[1]);
-        if (player1 == null || player2 == null)
+        var q1 = PhotonNetwork.CurrentRoom.GetPlayer(questionerNumbers[0]);
+        var q2 = PhotonNetwork.CurrentRoom.GetPlayer(questionerNumbers[1]);
+        if (q1 == null || q2 == null)
         {
+            Debug.Log("出題者がいないよ");
             return;
         }
-        dotUIManager.SetRoleText(player1.NickName, player2.NickName);
+        dotUIManager.SetRoleText(q1.NickName, q2.NickName);
         if (currentTheme == null)
         {
+            Debug.Log("お題がないよ");
             return;
         }
-        dotUIManager.SetThemeText(IsQuestioner(), currentTheme.question);
+        dotUIManager.SetThemeText(IsQuestioner, currentTheme.question);
     }
 
-    private bool IsQuestioner()
-    {
-        if (PhotonNetwork.LocalPlayer.ActorNumber == questionerNumbers[0] || PhotonNetwork.LocalPlayer.ActorNumber == questionerNumbers[1])
-        {
-            return true;
-        }
-        else
-        {
-            return false;
-        }
-    }
+    private bool IsQuestioner => PhotonNetwork.LocalPlayer.ActorNumber == questionerNumbers[0] || PhotonNetwork.LocalPlayer.ActorNumber == questionerNumbers[1];
 
     [PunRPC]
     private void StartTimer()
@@ -401,35 +430,10 @@ public class CooperateGameManager : MonoBehaviourPunCallbacks
         timeRemaining = time;
     }
 
-    [PunRPC]
-    private void UpdateCurrentTheme(string question)
-    {
-        if (currentTheme == null)
-        {
-            currentTheme = new QuizQuestion();
-        }
-        currentTheme.question = question;
-    }
-
     private string NormalizeString(string input)
     {
         // 前後の空白をトリムし、小文字変換し、全角を半角に変換
         return input.Trim().ToLowerInvariant().Normalize(NormalizationForm.FormKC);
-    }
-
-    private void DestroyResultPrefabs()
-    {
-        foreach (GameObject prefab in resultPrefabs)
-        {
-            Destroy(prefab);
-        }
-        resultPrefabs.Clear();
-
-        foreach (Transform child in pictureList)
-        {
-            Destroy(child.gameObject);
-        }
-        savedPictures.Clear();
     }
 
     [PunRPC]
@@ -449,6 +453,25 @@ public class CooperateGameManager : MonoBehaviourPunCallbacks
             correctPoints[player.ActorNumber] = 0;
             correctedPoints[player.ActorNumber] = 0;
         }
+    }
+
+    private void DestroyResultPrefabs()
+    {
+        foreach (GameObject prefab in resultPrefabs)
+        {
+            Destroy(prefab);
+        }
+        resultPrefabs.Clear();
+
+        foreach (Transform child in pictureList)
+        {
+            Destroy(child.gameObject);
+        }
+        foreach (var tex in savedPictures)
+        {
+            Destroy(tex);
+        }
+        savedPictures.Clear();
     }
 
     [PunRPC]
@@ -570,6 +593,5 @@ public class CooperateGameManager : MonoBehaviourPunCallbacks
         MoveGamePanel(new Vector2(-2000, 0));
         DisplayResults();
         DisplaySavedPictures();
-        dotUIManager.Initialize();
     }
 }

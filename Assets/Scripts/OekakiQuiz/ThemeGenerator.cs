@@ -11,7 +11,7 @@ public class ThemeGenerator : MonoBehaviourPunCallbacks
     List<QuizQuestion> themeList;
     List<int> themeListIndex;
 
-    [SerializeField] int mode; // 0: ふつう、1: むずかしい
+    [SerializeField] int difficulty; // 0: ふつう、1: むずかしい
     int lastMode = -1;
 
     const string KEY_JSON = "OekakiQuizThemeJson";
@@ -31,26 +31,26 @@ public class ThemeGenerator : MonoBehaviourPunCallbacks
     {
         if (PhotonNetwork.IsMasterClient)
         {
-            mode = PlayerPrefs.GetInt("Mode", 0);
-            BroadcastThemes(mode);
+            difficulty = PlayerPrefs.GetInt("Difficulty", 0);
+            BroadcastThemes(difficulty);
         }
 
         TryApplyRoomTheme();
     }
 
     // 再プレイ時に呼ばれる
-    public void BroadcastThemes(int mode)
+    public void BroadcastThemes(int difficulty)
     {
         if (PhotonNetwork.InRoom && !PhotonNetwork.IsMasterClient) return;
 
         bool hasJson = PhotonNetwork.CurrentRoom.CustomProperties.ContainsKey(KEY_JSON);
 
         // 初回 or mode変更 or ルームにまだJSONがない　➔　取得してJSONを更新
-        if (!hasJson || lastMode != mode || themeList == null)
+        if (!hasJson || lastMode != difficulty || themeList == null)
         {
-            lastMode = mode;
+            lastMode = difficulty;
 
-            googleSheetLoader.LoadDataFromGoogleSheet(mode, () =>
+            googleSheetLoader.LoadDataFromGoogleSheet(difficulty, () =>
             {
                 var list = googleSheetLoader.questions; // クイズリストを取得
                 RemoveInvalidQuestions(list); // 空欄を無くす

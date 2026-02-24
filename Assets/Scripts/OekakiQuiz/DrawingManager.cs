@@ -91,32 +91,6 @@ public class DrawingManager : MonoBehaviourPunCallbacks
         ChangeMode(ToolMode.Pen);
     }
 
-    private void Update()
-    {
-        if (!isDrawable || texture == null) return;
-        if (!TryGetMouseLocalPoint(out var localPoint)) return;
-
-        switch (currentMode)
-        {
-            case ToolMode.Pen:
-                UpdatePen(localPoint);
-                break;
-
-            case ToolMode.Fill:
-                UpdateFill(localPoint);
-                break;
-
-            case ToolMode.Line:
-                UpdateLine(localPoint);
-                break;
-
-            case ToolMode.Circle:
-            case ToolMode.Rectangle:
-                UpdateShapeDrag(localPoint);
-                break;
-        }
-    }
-
     // テクスチャを作成
     [PunRPC]
     private void CreateTexture(int width, int height)
@@ -163,6 +137,32 @@ public class DrawingManager : MonoBehaviourPunCallbacks
         {
             CreateTexture(width, height);
             SetDrawFieldSize(width, height);
+        }
+    }
+
+    private void Update()
+    {
+        if (!isDrawable || texture == null) return;
+        if (!TryGetMouseLocalPoint(out var localPoint)) return;
+
+        switch (currentMode)
+        {
+            case ToolMode.Pen:
+                UpdatePen(localPoint);
+                break;
+
+            case ToolMode.Fill:
+                UpdateFill(localPoint);
+                break;
+
+            case ToolMode.Line:
+                UpdateLine(localPoint);
+                break;
+
+            case ToolMode.Circle:
+            case ToolMode.Rectangle:
+                UpdateShapeDrag(localPoint);
+                break;
         }
     }
 
@@ -248,8 +248,8 @@ public class DrawingManager : MonoBehaviourPunCallbacks
             {
                 int actorNumber = PhotonNetwork.LocalPlayer.ActorNumber;
                 photonView.RPC("DrawShapeRPC", RpcTarget.All,
-                    actorNumber, (int)currentMode, startPoint.Value.x, startPoint.Value.y, p.x, p.y,
-                    drawColor.r, drawColor.g, drawColor.b, drawColor.a, brushSize);
+                    actorNumber, startPoint.Value.x, startPoint.Value.y, p.x, p.y,
+                     (int)currentMode, drawColor.r, drawColor.g, drawColor.b, drawColor.a, brushSize);
             }
             else
             {
@@ -281,8 +281,8 @@ public class DrawingManager : MonoBehaviourPunCallbacks
             {
                 int actorNumber = PhotonNetwork.LocalPlayer.ActorNumber;
                 photonView.RPC("DrawShapeRPC", RpcTarget.All,
-                    actorNumber, (int)currentMode, startPixel.x, startPixel.y, end.x, end.y,
-                    drawColor.r, drawColor.g, drawColor.b, drawColor.a, brushSize);
+                    actorNumber, startPixel.x, startPixel.y, end.x, end.y,
+                     (int)currentMode, drawColor.r, drawColor.g, drawColor.b, drawColor.a, brushSize);
             }
             else
             {
@@ -388,7 +388,7 @@ public class DrawingManager : MonoBehaviourPunCallbacks
     }
 
     [PunRPC]
-    private void DrawShapeRPC(int actorNumber, int modeInt, int startX, int startY, int endX, int endY, float r, float g, float b, float a, int size)
+    private void DrawShapeRPC(int actorNumber, int startX, int startY, int endX, int endY, int modeInt, float r, float g, float b, float a, int size)
     {
         var color = new Color(r, g, b, a);
         var tempDrawer = new DrawingUtils(texture, color, size);

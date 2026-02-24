@@ -3,7 +3,7 @@ using UnityEngine.UI;
 
 public class CooperateUIManager : MonoBehaviour
 {
-    [SerializeField] CooperateGridGenerator cooperateGridGenerator;
+    [SerializeField] CooperateGridGenerator gridGenerator;
 
     [SerializeField] GameObject dotUI;
     [SerializeField] GameObject blindPanel;
@@ -24,12 +24,13 @@ public class CooperateUIManager : MonoBehaviour
     [SerializeField] CooperateTimeInputField cooperateTimeInputField;
     [SerializeField] Image currentColor;
     [SerializeField] Toggle mekakushiToggle;
-
-    [SerializeField] bool isBlind;
-
     [SerializeField] GameObject sizeChangerPanel;
     [SerializeField] GameObject colorSpectrum;
     [SerializeField] GameObject backPanel;
+    [SerializeField] Slider brushSizeSlider;
+    [SerializeField] ColorPalette palette;
+
+    CooperateDrawingManager dm;
 
 
     private void Start()
@@ -42,66 +43,65 @@ public class CooperateUIManager : MonoBehaviour
         {
             PhotonManager.instance.OnLeaveRoomAndDestroy();
         });
+        brushSizeSlider.onValueChanged.AddListener(OnBrushSizeSliderChanged);
+        mekakushiToggle.onValueChanged.AddListener(_ => OnMekakushiToggle());
     }
 
+    private void TryBind()
+    {
+        if (dm == null) dm = CooperateDrawingManager.instance;
+
+        dm.OnDrawableChanged += OnDrawableChanged;
+        dm.OnToolModeChanged += OnToolModeChanged;
+        dm.OnColorChanged += OnColorChanged;
+        dm.OnBrushSizeChanged += OnBrushSizeChanged;
+        widthInputField.OnStateChanged += OnSizeInputFieldValueChanged;
+        heightInputField.OnStateChanged += OnSizeInputFieldValueChanged;
+        cooperateCountInputField.OnStateChanged += OnSettingInputFieldValueChanged;
+        cooperateTimeInputField.OnStateChanged += OnSettingInputFieldValueChanged;
+
+        RefreshAllUI();
+    }
+
+    private void RefreshAllUI()
+    {
+        OnDrawableChanged(dm.IsDrawable);
+        OnToolModeChanged(dm.currentMode);
+        OnColorChanged(dm.DrawColor);
+    }
+
+    // 初期化処理
     public void Initialize()
     {
-        // 初期化処理
-        cooperateGridGenerator.InitializeGridToggle();
         sizeChangerPanel.SetActive(false);
         colorSpectrum.SetActive(false);
         backPanel.SetActive(false);
         mekakushiToggle.isOn = false;
-        CooperateDrawingManager.instance.InitializeDrawField();
     }
 
-    private void Update()
+    private void OnDrawableChanged(bool drawable)
     {
-        SetActive(dotUI, CooperateDrawingManager.instance.isDrawable);
-        SetActive(blindPanel, isBlind);
-        SetActive(penButtonCover, CooperateDrawingManager.instance.currentMode == CooperateDrawingManager.ToolMode.Pen);
-        SetActive(fillButtonCover, CooperateDrawingManager.instance.currentMode == CooperateDrawingManager.ToolMode.Fill);
-        SetActive(lineButtonCover, CooperateDrawingManager.instance.currentMode == CooperateDrawingManager.ToolMode.Line);
-        SetActive(circleButtonCover, CooperateDrawingManager.instance.currentMode == CooperateDrawingManager.ToolMode.Circle);
-        SetActive(rectangleButtonCover, CooperateDrawingManager.instance.currentMode == CooperateDrawingManager.ToolMode.Rectangle);
-
-        currentColor.color = CooperateDrawingManager.instance.drawColor;
-
-        isBlind = mekakushiToggle.isOn;
-
-        if (heightInputField.IsError || widthInputField.IsError)
-        {
-            SetInteractable(sizeApplyButton, false);
-        }
-        else
-        {
-            SetInteractable(sizeApplyButton, true);
-        }
-
-        if (cooperateCountInputField.IsError || cooperateTimeInputField.IsError)
-        {
-            SetInteractable(gameRestartButton, false);
-        }
-        else
-        {
-            SetInteractable(gameRestartButton, true);
-        }
+        SetActive(dotUI, drawable);
     }
 
-    private void SetActive(GameObject obj, bool isActive)
+    private void OnToolModeChanged(CooperateDrawingManager.ToolMode mode)
     {
-        if (obj.activeSelf != isActive)
-        {
-            obj.SetActive(isActive);
-        }
+        SetActive(penButtonCover, mode == CooperateDrawingManager.ToolMode.Pen);
+        SetActive(fillButtonCover, mode == CooperateDrawingManager.ToolMode.Fill);
+        SetActive(lineButtonCover, mode == CooperateDrawingManager.ToolMode.Line);
+        SetActive(circleButtonCover, mode == CooperateDrawingManager.ToolMode.Circle);
+        SetActive(rectangleButtonCover, mode == CooperateDrawingManager.ToolMode.Rectangle);
     }
 
-    private void SetInteractable(Button button, bool isInteractable)
+    private void OnColorChanged(Color color)
     {
-        if (button.interactable != isInteractable)
-        {
-            button.interactable = isInteractable;
-        }
+        currentColor.color = color;
+    }
+
+    private void OnBrushSizeChanged(int size)
+    {
+        if ((int)brushSizeSlider.value != size)
+            brushSizeSlider.SetValueWithoutNotify(size);
     }
 
     public void SetRoleText(string name1, string name2)
@@ -117,86 +117,54 @@ public class CooperateUIManager : MonoBehaviour
     public void OnClickSizeApplyButton()
     {
         CooperateDrawingManager.instance.ResetDrawFieldSize(widthInputField.inputPixelSize, heightInputField.inputPixelSize);
-        if (CooperateDrawingManager.instance.CanvasWidth > 50 || CooperateDrawingManager.instance.CanvasHeight > 50)
+        gridGenerator.SetGridCount(widthInputField.inputPixelSize, heightInputField.inputPixelSize);
+    }
+
+    public void OnClickColor(int index) => dm.ChangeColor(palette.colors[index]);
+    public void OnClickToolButton(int index) => dm.ChangeMode((CooperateDrawingManager.ToolMode)index);
+    public void OnClickEraserButton() => dm.ChangeColor(new Color(0, 0, 0, 0));
+    public void ToggleIsDrawable() => dm.SetDrawable(!dm.IsDrawable);
+    public void OnBrushSizeSliderChanged(float v) => dm.SetBrushSize((int)v);
+
+    public void OnSizeInputFieldValueChanged()
+    {
+        if (heightInputField.IsError || widthInputField.IsError)
         {
-            cooperateGridGenerator.ChangeInteractableGridToggle(false);
+            SetInteractable(sizeApplyButton, false);
         }
         else
         {
-            cooperateGridGenerator.ChangeInteractableGridToggle(true);
+            SetInteractable(sizeApplyButton, true);
         }
     }
 
-    public void ToggleIsDrawable()
+    public void OnSettingInputFieldValueChanged()
     {
-        CooperateDrawingManager.instance.isDrawable = !CooperateDrawingManager.instance.isDrawable;
-    }
-
-    // ツールボタン
-    public void OnClickToolButton(int index)
-    {
-        switch (index)
+        if (cooperateCountInputField.IsError || cooperateTimeInputField.IsError)
         {
-            case 0:
-                CooperateDrawingManager.instance.ChangeMode(CooperateDrawingManager.ToolMode.Pen);
-                break;
-            case 1:
-                CooperateDrawingManager.instance.ChangeMode(CooperateDrawingManager.ToolMode.Fill);
-                break;
-            case 2:
-                CooperateDrawingManager.instance.ChangeMode(CooperateDrawingManager.ToolMode.Line);
-                break;
-            case 3:
-                CooperateDrawingManager.instance.ChangeMode(CooperateDrawingManager.ToolMode.Circle);
-                break;
-            case 4:
-                CooperateDrawingManager.instance.ChangeMode(CooperateDrawingManager.ToolMode.Rectangle);
-                break;
+            SetInteractable(gameRestartButton, false);
+        }
+        else
+        {
+            SetInteractable(gameRestartButton, true);
         }
     }
 
-    public void OnClickBlack()
+    private void OnMekakushiToggle() => blindPanel.SetActive(mekakushiToggle.isOn);
+
+    private void SetActive(GameObject obj, bool isActive)
     {
-        CooperateDrawingManager.instance.ChangeColor(Color.black);
+        if (obj.activeSelf != isActive)
+        {
+            obj.SetActive(isActive);
+        }
     }
-    public void OnClickRed()
+
+    private void SetInteractable(Button button, bool isInteractable)
     {
-        CooperateDrawingManager.instance.ChangeColor(Color.red);
-    }
-    public void OnClickBlue()
-    {
-        CooperateDrawingManager.instance.ChangeColor(Color.blue);
-    }
-    public void OnClickGreen()
-    {
-        CooperateDrawingManager.instance.ChangeColor(Color.green);
-    }
-    public void OnClickYellow()
-    {
-        CooperateDrawingManager.instance.ChangeColor(Color.yellow);
-    }
-    public void OnClickMagenta()
-    {
-        CooperateDrawingManager.instance.ChangeColor(Color.magenta);
-    }
-    public void OnClickCyan()
-    {
-        CooperateDrawingManager.instance.ChangeColor(Color.cyan);
-    }
-    public void OnClickGray()
-    {
-        CooperateDrawingManager.instance.ChangeColor(Color.gray);
-    }
-    public void OnClickBeige()
-    {
-        CooperateDrawingManager.instance.ChangeColor(new Color32(246, 184, 148, 255));
-    }
-    public void OnClickWhite()
-    {
-        CooperateDrawingManager.instance.ChangeColor(Color.white);
-    }
-    public void OnClickEraserButton()
-    {
-        CooperateDrawingManager.instance.ChangeColor(new Color(0, 0, 0, 0));
+        if (button.interactable != isInteractable)
+        {
+            button.interactable = isInteractable;
+        }
     }
 }

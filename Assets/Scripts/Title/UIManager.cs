@@ -3,6 +3,7 @@ using UnityEngine.UI;
 using System.Text.RegularExpressions;
 using Photon.Pun;
 using Photon.Realtime;
+using System.Linq;
 
 public class UIManager : MonoBehaviourPunCallbacks
 {
@@ -17,7 +18,7 @@ public class UIManager : MonoBehaviourPunCallbacks
     [SerializeField] Button roomCreateButton;
     [SerializeField] Button roomJoinButton;
     [SerializeField] GameObject startButton;
-    [SerializeField] Toggle modeToggle;
+    [SerializeField] ToggleGroup difficultyToggleGroup;
     [SerializeField] int playerCount;
     [SerializeField] ColorPalette textColors;
     private Button startBtn;
@@ -331,7 +332,12 @@ public class UIManager : MonoBehaviourPunCallbacks
         {
             PlayerPrefs.SetInt("QuestionCount", questionCount);
             PlayerPrefs.SetInt("LimitTime", limitTime);
-            PlayerPrefs.SetInt("Mode", modeToggle.isOn ? 1 : 0);
+
+            var onToggle = difficultyToggleGroup.ActiveToggles().FirstOrDefault();
+            int value = onToggle.GetComponent<DifficultyToggle>().difficultyValue;
+            PlayerPrefs.SetInt("Difficulty", value);
+
+            PlayerPrefs.Save();
             StartSceneForAll("OekakiQuiz");
         }
         else

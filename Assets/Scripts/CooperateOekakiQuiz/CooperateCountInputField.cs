@@ -8,6 +8,8 @@ public class CooperateCountInputField : MonoBehaviour
     [SerializeField] bool isError;
     public bool IsError => isError;
 
+    public event System.Action OnStateChanged;
+
     private void Start()
     {
         inputField.contentType = InputField.ContentType.IntegerNumber;
@@ -44,5 +46,6 @@ public class CooperateCountInputField : MonoBehaviour
         {
             isError = true;
         }
+        OnStateChanged?.Invoke();
     }
 }
