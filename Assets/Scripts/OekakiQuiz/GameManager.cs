@@ -6,6 +6,7 @@ using System.Text;
 using UnityEngine;
 using UnityEngine.UI;
 
+
 public class GameManager : MonoBehaviourPunCallbacks
 {
     public static GameManager instance;
@@ -45,7 +46,7 @@ public class GameManager : MonoBehaviourPunCallbacks
 
     [SerializeField] Transform pictureList; // 結果表示用の画像の親オブジェクト
     [SerializeField] GameObject picturePrefab; // 結果表示用の画像プレハブ
-    private List<Texture2D> savedPictures = new List<Texture2D>(); // 保存された画像のリスト
+    private List<SavedResult> savedPictures = new List<SavedResult>(); // 保存された画像のリスト
 
     [SerializeField] GameObject changeSettingButton; // 設定変更ボタン
     [SerializeField] GameObject reuseSettingButton; // 設定再利用ボタン
@@ -460,9 +461,9 @@ public class GameManager : MonoBehaviourPunCallbacks
         {
             Destroy(child.gameObject);
         }
-        foreach (var tex in savedPictures)
+        foreach (var picture in savedPictures)
         {
-            Destroy(tex);
+            Destroy(picture.texture);
         }
         savedPictures.Clear();
     }
@@ -560,20 +561,24 @@ public class GameManager : MonoBehaviourPunCallbacks
         copy.filterMode = FilterMode.Point;
         copy.SetPixels32(src.GetPixels32());
         copy.Apply();
-        savedPictures.Add(copy);
+
+        string theme = currentTheme != null ? currentTheme.question : "(no theme)";
+        savedPictures.Add(new SavedResult(theme, copy));
     }
 
     private void DisplaySavedPictures()
     { 
-        foreach (Texture2D picture in savedPictures)
+        foreach (var picture in savedPictures)
         {
             GameObject pictureEntry = Instantiate(picturePrefab, pictureList);
-            Transform rawImageTransform = pictureEntry.transform.Find("RawImage");
-            RawImage rawImage = rawImageTransform.GetComponent<RawImage>();
-            rawImage.texture = picture;
+            var rawImage = pictureEntry.GetComponentInChildren<RawImage>();
+            rawImage.texture = picture.texture;
+
+            var themeText = pictureEntry.transform.Find("ThemeText").GetComponent<Text>();
+            themeText.text = picture.theme;
 
             var fitter = rawImage.GetComponent<AspectRatioFitter>();
-            fitter.aspectRatio = (float)picture.width / picture.height;
+            fitter.aspectRatio = (float)picture.texture.width / picture.texture.height;
         }
     }
 

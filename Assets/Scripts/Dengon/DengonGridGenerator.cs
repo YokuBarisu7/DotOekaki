@@ -3,137 +3,88 @@ using UnityEngine.UI;
 
 public class DengonGridGenerator : MonoBehaviour
 {
-    Texture2D gridTexture;
     [SerializeField] RawImage gridPanel;
     [SerializeField] Toggle gridToggle;
-    [SerializeField] int gridSize;
-    [SerializeField] Color clearColor;
-    [SerializeField] Color gridColor;
 
-    int gridSizeWidth;
-    int gridSizeHeight;
+    [Header("グリッドの細かさ(縦×横)")]
+    [SerializeField] int cols;
+    [SerializeField] int rows;
+
+    [Header("グリッド線の太さ")]
+    [SerializeField] float thicknessPx;
+
+    static readonly int RectSizeID = Shader.PropertyToID("_RectSize");
+    static readonly int GridCountID = Shader.PropertyToID("_GridCount");
+    static readonly int ThicknessID = Shader.PropertyToID("_GridThickness");
+    static readonly int EnabledID = Shader.PropertyToID("_GridEnabled");
+
+    Material runtimeMat;
 
     private void Start()
     {
-        gridSizeWidth = DengonDrawingManager.instance.CanvasWidth * gridSize;
-        gridSizeHeight = DengonDrawingManager.instance.CanvasHeight * gridSize;
+        runtimeMat = Instantiate(gridPanel.material);
+        gridPanel.material = runtimeMat;
 
-        CreateTexture(gridSizeWidth, gridSizeHeight);
-    }
-
-    public void ToggleGrid()
-    {
-        if (gridToggle.isOn)
+        if (gridToggle != null)
         {
-            gridPanel.enabled = true;
-
-            gridSizeWidth = DengonDrawingManager.instance.CanvasWidth * gridSize;
-            gridSizeHeight = DengonDrawingManager.instance.CanvasHeight * gridSize;
-
-            CreateTexture(gridSizeWidth, gridSizeHeight);
-            CreateGrid(gridTexture.width, gridTexture.height);
+            gridToggle.isOn = false;
+            gridToggle.onValueChanged.AddListener(OnToggle);
+            OnToggle(false);
         }
         else
         {
-            gridPanel.enabled = false;
+            SetEnabled(false);
+        }
+        ApplyParams();
+
+        DengonDrawingManager.instance.OnFieldSizeChanged += SetGridCount;
+    }
+
+    private void OnDestroy()
+    {
+        if (runtimeMat != null) Destroy(runtimeMat);
+    }
+
+    private void OnToggle(bool on)
+    {
+        SetEnabled(on);
+        if (on)
+        {
+            ApplyParams();
         }
     }
 
-    private void CreateTexture(int width, int height)
+    private void SetEnabled(bool on)
     {
-        gridTexture = new Texture2D(width, height, TextureFormat.RGBA32, false);
-        gridTexture.filterMode = FilterMode.Point;
-
-        Color[] colors = new Color[width * height];
-        for (int i = 0; i < colors.Length; i++)
-        {
-            colors[i] = clearColor;
-        }
-        gridTexture.SetPixels(colors);
-        gridTexture.Apply();
-        gridPanel.texture = gridTexture;
+        if (runtimeMat == null) return;
+        runtimeMat.SetFloat(EnabledID, on ? 1f : 0f);
     }
 
-    private void CreateGrid(int width, int height)
+    // ドット数変更時に呼ばれる
+    public void SetGridCount(int newCols, int newRows)
     {
-        if (DengonDrawingManager.instance.CanvasWidth > 50 || DengonDrawingManager.instance.CanvasHeight > 50) return;
-
-        for (int x = 0; x < width; x++)
-        {
-            for (int y = 0; y < height; y++)
-            {
-                if (x % gridSize == 0 || x % gridSize == gridSize - 1 || x == 1 || x == width - 2 || y % gridSize == 0 || y % gridSize == gridSize - 1 || y == 1 || y == height - 2)
-                {
-                    gridTexture.SetPixel(x, y, gridColor);
-                }
-            }
-        }
-
-        if (DengonDrawingManager.instance.CanvasWidth > 10 || DengonDrawingManager.instance.CanvasHeight > 10)
-        {
-            for (int x = 0; x < width; x++)
-            {
-                for (int y = 0; y < height; y++)
-                {
-                    if (x % gridSize == 1 || y % gridSize == 1 || x == 2 || y == 2 || x == width - 3 || y == height - 3)
-                    {
-                        gridTexture.SetPixel(x, y, gridColor);
-                    }
-                }
-            }
-        }
-
-        if (DengonDrawingManager.instance.CanvasWidth > 20 || DengonDrawingManager.instance.CanvasHeight > 20)
-        {
-            for (int x = 0; x < width; x++)
-            {
-                for (int y = 0; y < height; y++)
-                {
-                    if (x % gridSize == gridSize - 2 || y % gridSize == gridSize - 2 || x == 3 || y == 3 || x == width - 4 || y == width - 4)
-                    {
-                        gridTexture.SetPixel(x, y, gridColor);
-                    }
-                }
-            }
-        }
-
-        if (DengonDrawingManager.instance.CanvasWidth > 30 || DengonDrawingManager.instance.CanvasHeight > 30)
-        {
-            for (int x = 0; x < width; x++)
-            {
-                for (int y = 0; y < height; y++)
-                {
-                    if (x % gridSize == 2 || y % gridSize == 2 || x == 4 || y == 4 || x == width - 5 || y == height - 5)
-                    {
-                        gridTexture.SetPixel(x, y, gridColor);
-                    }
-                }
-            }
-        }
-
-        if (DengonDrawingManager.instance.CanvasWidth > 40 || DengonDrawingManager.instance.CanvasHeight > 40)
-        {
-            for (int x = 0; x < width; x++)
-            {
-                for (int y = 0; y < height; y++)
-                {
-                    if (x % gridSize == gridSize - 3 || y % gridSize == gridSize - 3 || x == 5 || y == 5 || x == width - 6 || y == height - 6)
-                    {
-                        gridTexture.SetPixel(x, y, gridColor);
-                    }
-                }
-            }
-        }
-        gridTexture.Apply();
+        cols = Mathf.Max(1, newCols);
+        rows = Mathf.Max(1, newRows);
+        ApplyParams();
     }
 
-    public void InitializeGridToggle()
+    private void ApplyParams()
     {
-        gridToggle.isOn = false;
-    }
+        if (runtimeMat == null) return;
 
-    public void ChangeInteractableGridToggle(bool isInteractable)
-    {
-        gridToggle.interactable = isInteractable;
+        cols = Mathf.Max(1, cols);
+        rows = Mathf.Max(1, rows);
+
+        RectTransform rt = gridPanel.rectTransform;
+        Vector2 size = rt.rect.size;
+
+        Canvas canvas = gridPanel.canvas;
+        float sf = canvas != null ? canvas.scaleFactor : 1f;
+
+        Vector2 rectPixels = size * sf;
+
+        runtimeMat.SetVector(RectSizeID, new Vector4(rectPixels.x, rectPixels.y, 0, 0));
+        runtimeMat.SetVector(GridCountID, new Vector4(cols, rows, 0, 0));
+        runtimeMat.SetFloat(ThicknessID, thicknessPx);
     }
 }

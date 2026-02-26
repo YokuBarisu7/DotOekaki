@@ -5,81 +5,84 @@ using UnityEngine.EventSystems;
 public class DengonHueSlider : MonoBehaviour, IPointerClickHandler, IDragHandler
 {
     RawImage hueRawImage; // HueスライダーのRawImage
-    RectTransform hueRawImageRect; // HueスライダーのRectTransform
+    RectTransform hueRect; // HueスライダーのRectTransform
     Texture2D hueTexture;
+
     [SerializeField] Image hueCursorImage; // Hueスライダーのカーソル
     [SerializeField] RectTransform hueCursor; // Hueスライダーのカーソル
-    [SerializeField] DengonSVMap svMap; // SVマップ
+    [SerializeField] SVMap svMap; // SVマップ
 
     private float hue;
 
     void Start()
     {
         hueRawImage = GetComponent<RawImage>();
-        hueRawImageRect = hueRawImage.GetComponent<RectTransform>();
+        hueRect = hueRawImage.rectTransform;
 
         CreateHueTexture();
         hueRawImage.texture = hueTexture;
 
         // 初期値を設定
-        hue = 0f;
-        hueCursorImage.color = Color.red;
+        SetHue(0f);
+    }
+
+    private void OnDestroy()
+    {
+        if (hueTexture != null) Destroy(hueTexture);
     }
 
     // Hueスライダー用のTexture2Dを作成
     private void CreateHueTexture()
     {
-        int width = 256;  // スライダーの幅
-        int height = 1;   // 高さは1ピクセル
+        int width = 256;
+        hueTexture = new Texture2D(width, 1, TextureFormat.RGBA32, false)
+        {
+            filterMode = FilterMode.Bilinear,
+            wrapMode = TextureWrapMode.Clamp
+        };
 
-        hueTexture = new Texture2D(width, height);
-
-        // 色相0〜1のグラデーションを生成
+        var px = new Color32[width];
         for (int x = 0; x < width; x++)
         {
-            float hue = (float)x / (width - 1);  // 横位置に基づいて色相を設定
-            Color color = Color.HSVToRGB(hue, 1f, 1f);  // 彩度と明度を最大に設定
-            hueTexture.SetPixel(x, 0, color);
+            float h = (float)x / (width - 1);
+            px[x] = (Color32)Color.HSVToRGB(h, 1f, 1f);
         }
-
-        hueTexture.Apply();  // 変更を適用
+        hueTexture.SetPixels32(px);
+        hueTexture.Apply(false, false);
     }
 
     // クリック時の処理
-    public void OnPointerClick(PointerEventData eventData)
-    {
-        UpdateHue(eventData);
-        svMap.UpdateSpectrumTexture(hue);
-        svMap.UpdateCursorColor(Color.HSVToRGB(hue, svMap.s, svMap.v));
-    }
-
+    public void OnPointerClick(PointerEventData eventData) => UpdateHue(eventData);
     // ドラッグ時の処理
-    public void OnDrag(PointerEventData eventData)
-    {
-        UpdateHue(eventData);
-        svMap.UpdateSpectrumTexture(hue);
-        svMap.UpdateCursorColor(Color.HSVToRGB(hue, svMap.s, svMap.v));
-    }
+    public void OnDrag(PointerEventData eventData) => UpdateHue(eventData);
 
     // H値を更新する共通処理
     private void UpdateHue(PointerEventData eventData)
     {
-        Vector2 localPoint;
+        Vector2 local;
         RectTransformUtility.ScreenPointToLocalPointInRectangle(
-            hueRawImageRect, eventData.position, eventData.pressEventCamera, out localPoint);
+            hueRect, eventData.position, eventData.pressEventCamera, out local);
 
-        // スライダーの範囲に収める
-        Rect rect = hueRawImageRect.rect;
-        localPoint.x = Mathf.Clamp(localPoint.x, rect.xMin, rect.xMax);
+        Rect rect = hueRect.rect;
+        local.x = Mathf.Clamp(local.x, rect.xMin, rect.xMax);
 
-        // 色相を更新
-        hue = Mathf.InverseLerp(rect.xMin, rect.xMax, localPoint.x);
+        float h = Mathf.InverseLerp(rect.xMin, rect.xMax, local.x);
+        SetHue(h);
 
-        // 選択された色を表示
-        Color selectedColor = Color.HSVToRGB(hue, 1f, 1f);
-        hueCursorImage.color = selectedColor;
+        // SVMapへ通知
+        svMap.SetHue(hue);
+    }
 
-        // カーソルの位置を更新
-        hueCursor.anchoredPosition = new Vector2(localPoint.x, 0);
+    private void SetHue(float h)
+    {
+        hue = Mathf.Repeat(h, 1f);
+
+        Color c = Color.HSVToRGB(hue, 1f, 1f);
+        hueCursorImage.color = c;
+
+        // カーソルの位置更新
+        Rect rect = hueRect.rect;
+        float x = Mathf.Lerp(rect.xMin, rect.xMax, hue);
+        hueCursor.anchoredPosition = new Vector2(x, hueCursor.anchoredPosition.y);
     }
 }

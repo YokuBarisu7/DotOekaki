@@ -18,7 +18,6 @@ public class UIManager : MonoBehaviourPunCallbacks
     [SerializeField] Button roomCreateButton;
     [SerializeField] Button roomJoinButton;
     [SerializeField] GameObject startButton;
-    [SerializeField] ToggleGroup difficultyToggleGroup;
     [SerializeField] int playerCount;
     [SerializeField] ColorPalette textColors;
     private Button startBtn;
@@ -27,6 +26,7 @@ public class UIManager : MonoBehaviourPunCallbacks
     [SerializeField] Button quizGameStartButton;
     [SerializeField] InputField questionCountInputField;
     [SerializeField] InputField limitTimeInputField;
+    [SerializeField] ToggleGroup quizDifficultyToggleGroup;
     [SerializeField] int questionCount;
     [SerializeField] int limitTime;
     private bool isErrorQuestionCount;
@@ -37,6 +37,7 @@ public class UIManager : MonoBehaviourPunCallbacks
     [SerializeField] Button cooperateQuizStartButton;
     [SerializeField] InputField cooperateCountInputField;
     [SerializeField] InputField cooperateTimeInputField;
+    [SerializeField] ToggleGroup coopDifficultyToggleGroup;
     [SerializeField] int cooperateCount;
     [SerializeField] int cooperateTime;
     private bool isErrorCooperateCount;
@@ -333,7 +334,7 @@ public class UIManager : MonoBehaviourPunCallbacks
             PlayerPrefs.SetInt("QuestionCount", questionCount);
             PlayerPrefs.SetInt("LimitTime", limitTime);
 
-            var onToggle = difficultyToggleGroup.ActiveToggles().FirstOrDefault();
+            var onToggle = quizDifficultyToggleGroup.ActiveToggles().FirstOrDefault();
             int value = onToggle.GetComponent<DifficultyToggle>().difficultyValue;
             PlayerPrefs.SetInt("Difficulty", value);
 
@@ -352,6 +353,12 @@ public class UIManager : MonoBehaviourPunCallbacks
         {
             PlayerPrefs.SetInt("CooperateCount", cooperateCount);
             PlayerPrefs.SetInt("CooperateTime", cooperateTime);
+
+            var onToggle = coopDifficultyToggleGroup.ActiveToggles().FirstOrDefault();
+            int value = onToggle.GetComponent<DifficultyToggle>().difficultyValue;
+            PlayerPrefs.SetInt("Difficulty", value);
+
+            PlayerPrefs.Save();
             StartSceneForAll("CooperateQuiz");
         }
         else

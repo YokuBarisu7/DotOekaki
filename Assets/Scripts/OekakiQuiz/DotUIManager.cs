@@ -40,14 +40,8 @@ public class DotUIManager : MonoBehaviour
     {
         TryBind();
 
-        backButton1.onClick.AddListener(() =>
-        {
-            PhotonManager.instance.OnLeaveRoomAndDestroy();
-        });
-        backButton2.onClick.AddListener(() =>
-        {
-            PhotonManager.instance.OnLeaveRoomAndDestroy();
-        });
+        backButton1.onClick.AddListener(() => { PhotonManager.instance.OnLeaveRoomAndDestroy(); });
+        backButton2.onClick.AddListener(() => { PhotonManager.instance.OnLeaveRoomAndDestroy(); });
         brushSizeSlider.onValueChanged.AddListener(OnBrushSizeSliderChanged);
         mekakushiToggle.onValueChanged.AddListener(_ => OnMekakushiToggle());
     }

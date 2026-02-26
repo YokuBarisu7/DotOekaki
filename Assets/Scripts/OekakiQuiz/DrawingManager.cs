@@ -571,12 +571,15 @@ public class DrawingManager : MonoBehaviourPunCallbacks
         isDrawing = false;
         startPoint = null;
         lastPoint = null;
+        startPixel = default;
 
         OnToolModeChanged?.Invoke(currentMode);
     }
 
     public void ChangeColor(Color color)
     {
+        if (drawColor == color) return;
+
         drawColor = color;
         drawer = new DrawingUtils(texture, drawColor, brushSize);
 
@@ -590,6 +593,7 @@ public class DrawingManager : MonoBehaviourPunCallbacks
 
         brushSize = size;
         drawer = new DrawingUtils(texture, drawColor, brushSize);
+
         OnBrushSizeChanged?.Invoke(brushSize);
     }
 }

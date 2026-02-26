@@ -1,7 +1,7 @@
 using UnityEngine;
+using System.Collections;
 using System.Collections.Generic;
 using Photon.Pun;
-using ExitGames.Client.Photon;
 using System.Linq;
 
 public class DengonThemeGenerator : MonoBehaviourPunCallbacks
@@ -11,8 +11,17 @@ public class DengonThemeGenerator : MonoBehaviourPunCallbacks
 
     [SerializeField] int mode; // 0: かんたん、1: ふつう、2: むずかしい
 
+    Coroutine retryCo;
+
     const string KEY_JSON = "DengonThemesJson";
     const string KEY_VER = "DengonThemeVersion";
+
+    [System.Serializable]
+    public class DengonThemeListWrapper
+    {
+        public List<DengonTheme> themes;
+        public DengonThemeListWrapper(List<DengonTheme> t) { themes = t; }
+    }
 
     void Start()
     {
@@ -21,11 +30,8 @@ public class DengonThemeGenerator : MonoBehaviourPunCallbacks
             // ホストはスプレッドシートから問題リストを取得し、同期する
             GenerateAndBroadcastThemes(true);
         }
-        else
-        {
-            // 参加者用
-            TryApplyRoomThemes();
-        }
+
+        TryApplyThemesOrRetry();
     }
 
     public void RegenerateAndBroadcastThemes()
@@ -60,26 +66,66 @@ public class DengonThemeGenerator : MonoBehaviourPunCallbacks
                 { KEY_VER,  nextVer }
             };
             PhotonNetwork.CurrentRoom.SetCustomProperties(roomProps);
+            TryApplyThemesOrRetry();
         });
     }
 
-    private void TryApplyRoomThemes()
+    private void TryApplyThemesOrRetry()
     {
-        if (!PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue(KEY_JSON, out var obj)) return;
+        if (TryApplyRoomThemes())
+        {
+            StopRetry();
+            return;
+        }
+
+        if (retryCo == null) retryCo = StartCoroutine(RetryApplyCoroutine());
+    }
+
+    private void StopRetry()
+    {
+        if (retryCo != null)
+        {
+            StopCoroutine(retryCo);
+            retryCo = null;
+        }
+    }
+
+    private IEnumerator RetryApplyCoroutine()
+    {
+        int maxTries = 20;
+        float interval = 0.5f;
+
+        for (int i = 0; i < maxTries; i++) 
+        {
+            if (TryApplyRoomThemes())
+            {
+                StopRetry();
+                yield break;
+            }
+            yield return new WaitForSeconds(interval);
+        }
+
+        Debug.LogWarning("Theme Readyに失敗しました。");
+        StopRetry();
+    }
+
+    private bool TryApplyRoomThemes()
+    {
+        if (!PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue(KEY_JSON, out var obj)) return false;
         string json = obj as string;
-        if (string.IsNullOrEmpty(json)) return;
+        if (string.IsNullOrEmpty(json)) return false;
 
         var wrapper = JsonUtility.FromJson<DengonThemeListWrapper>(json);
         themeList = wrapper.themes;
 
-        SetThemeReady();
+        return SetThemeReady();
     }
 
-    private void SetThemeReady()
+    private bool SetThemeReady()
     {
         var ordered = PhotonNetwork.PlayerList.OrderBy(p => p.ActorNumber).ToList();
         int index = ordered.FindIndex(p => p.ActorNumber == PhotonNetwork.LocalPlayer.ActorNumber);
-        if (index < 0 || index >= themeList.Count) return;
+        if (index < 0 || index >= themeList.Count) return false;
 
         DengonGameManager.instance.SetTheme(themeList[index].theme);
 
@@ -93,14 +139,7 @@ public class DengonThemeGenerator : MonoBehaviourPunCallbacks
             { "ThemeVersion", roomVer }
         };
         PhotonNetwork.LocalPlayer.SetCustomProperties(props);
-    }
-
-    // DengonTheme[]をラップするクラス（JsonUtility用）
-    [System.Serializable]
-    public class DengonThemeListWrapper
-    {
-        public List<DengonTheme> themes;
-        public DengonThemeListWrapper(List<DengonTheme> t) { themes = t; }
+        return true;
     }
 
     // 重複を許さずにランダムなお題を取得する
@@ -118,11 +157,11 @@ public class DengonThemeGenerator : MonoBehaviourPunCallbacks
 
 
     // コールバック：ルームプロパティが更新されたとき
-    public override void OnRoomPropertiesUpdate(Hashtable changed)
+    public override void OnRoomPropertiesUpdate(ExitGames.Client.Photon.Hashtable changed)
     {
         if (changed.ContainsKey(KEY_JSON) || changed.ContainsKey(KEY_VER))
         {
-            TryApplyRoomThemes();
+            TryApplyThemesOrRetry();
         }
     }
 }

@@ -49,12 +49,27 @@ public class DengonGameManager : MonoBehaviourPunCallbacks
 
     [SerializeField] Text debugText;
 
+
+    [System.Serializable]
+    public class SerializableOrderList
+    {
+        public List<int> orderList;
+        public SerializableOrderList(List<int> list)
+        {
+            orderList = list;
+        }
+    }
+
     private void Awake()
     {
-        if (instance == null) instance = this;
-
-        if (!dengonUIManager) dengonUIManager = FindAnyObjectByType<DengonUIManager>();
-        if (!dengonShowPanelManager) dengonShowPanelManager = FindAnyObjectByType<DengonShowPanelManager>();
+        if (instance == null)
+        {
+            instance = this;
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
     }
 
     private void Start()
@@ -70,7 +85,6 @@ public class DengonGameManager : MonoBehaviourPunCallbacks
                 drawingTime = PlayerPrefs.GetInt("DengonTime", 180);
                 answerTime = PlayerPrefs.GetInt("DengonAnswerTime", 60);
                 photonView.RPC("SyncTimeOption", RpcTarget.All, drawingTime, answerTime); // 制限時間の同期
-
 
                 var actors = PhotonNetwork.PlayerList.Select(p => p.ActorNumber).OrderBy(x => x).ToList();
 
@@ -94,18 +108,24 @@ public class DengonGameManager : MonoBehaviourPunCallbacks
                 var lines = new[] { $"自分の番号：{currentOwnerID}", $"順番:{playerOrder[PhotonNetwork.LocalPlayer.ActorNumber]}" };
                 debugText.text += "\n" + string.Join("\n", lines);
 
-                restartButton.SetActive(true); // リザルト画面の設定再利用ボタンを表示
+                restartButton.SetActive(true); // ホストのみリザルト画面のもう一度遊ぶボタンを表示
                 photonView.RPC("ShowTabPanel", RpcTarget.All, PhotonNetwork.CurrentRoom.PlayerCount); // プレイヤーの人数に応じて結果タブを表示
             }
         }
     }
 
-    private void Update()
+    public override void OnPlayerPropertiesUpdate(Player targetPlayer, ExitGames.Client.Photon.Hashtable changedProps)
     {
-        if (PhotonNetwork.IsMasterClient && !gameStarted)
-        {
+        if (!PhotonNetwork.IsMasterClient || gameStarted) return;
+        if (changedProps.ContainsKey("OrderReady") || changedProps.ContainsKey("ThemeReceived") || changedProps.ContainsKey("ThemeVersion"))
             CheckAllPlayerReady();
-        }
+    }
+
+    public override void OnRoomPropertiesUpdate(ExitGames.Client.Photon.Hashtable changedProps)
+    {
+        if (!PhotonNetwork.IsMasterClient || gameStarted) return;
+        if (changedProps.ContainsKey("DengonThemeVersion"))
+            CheckAllPlayerReady();
     }
 
     private void CheckAllPlayerReady()
@@ -237,26 +257,6 @@ public class DengonGameManager : MonoBehaviourPunCallbacks
         SetOrderReady(true); // 自分の順番リストを受け取ったら準備完了状態にする
     }
 
-    [System.Serializable]
-    public class SerializableOrderList
-    {
-        public List<int> orderList;
-        public SerializableOrderList(List<int> list)
-        {
-            orderList = list;
-        }
-    }
-
-    public void SetTheme(string theme)
-    {
-        if (myTheme == null)
-        {
-            myTheme = new DengonTheme();
-        }
-        myTheme.theme = theme;
-        UpdateThemeText();
-    }
-
     private void StartGame()
     {
         if (myTheme == null || string.IsNullOrWhiteSpace(myTheme.theme))
@@ -272,8 +272,51 @@ public class DengonGameManager : MonoBehaviourPunCallbacks
         photonView.RPC("StartTimerRPC", RpcTarget.All, PhotonNetwork.Time, drawingTime, true);
     }
 
+    public void SetTheme(string theme)
+    {
+        if (myTheme == null)
+        {
+            myTheme = new DengonTheme();
+        }
+        myTheme.theme = theme;
+        UpdateThemeText();
+
+        if (PhotonNetwork.IsMasterClient && !gameStarted)
+        {
+            CheckAllPlayerReady();
+        }
+    }
+
 
     // ゲームプレイ中
+
+    [PunRPC]
+    private void SetGamePlay()
+    {
+        if (currentRound == 0 && myTheme != null && !string.IsNullOrWhiteSpace(myTheme.theme))
+        {
+            photonView.RPC("ReceiveSavedAnswer", RpcTarget.MasterClient, myTheme.theme, currentOwnerID);
+        }
+        currentRound++;
+        dengonUIManager.Initialize();
+        DengonDrawingManager.instance.InitializeDrawField();
+        DengonDrawingManager.instance.SetDrawable(true);
+
+        dengonUIManager.ResetAnswerSubmission();
+    }
+
+    [PunRPC]
+    private void UpdateThemeText()
+    {
+        string t = (myTheme != null) ? myTheme.theme : "";
+        themeText.text = $"お題：{t}";
+    }
+
+    [PunRPC]
+    private void SetLoadObj(bool isActive)
+    {
+        loadObj.SetActive(isActive);
+    }
 
     [PunRPC]
     private void StartTimerRPC(double startTime, int time, bool nextIsDrawingPhase)
@@ -359,6 +402,7 @@ public class DengonGameManager : MonoBehaviourPunCallbacks
         answerTime = time2;
     }
 
+    // お絵かき早期終了ボタン
     public void OnClickSubmitDrawingButton()
     {
         if (!isDrawingPhase || isGameFinished) return;
@@ -367,6 +411,8 @@ public class DengonGameManager : MonoBehaviourPunCallbacks
         UpdateReadyButtonUI();
         photonView.RPC("SetDrawingReady", RpcTarget.MasterClient, PhotonNetwork.LocalPlayer.ActorNumber, myDrawingReady);
     }
+
+    // アンサー早期終了ボタン
     public void OnClickSubmitAnswerButton()
     {
         if (isDrawingPhase || isGameFinished) return;
@@ -385,6 +431,15 @@ public class DengonGameManager : MonoBehaviourPunCallbacks
         dengonUIManager.SetAnswerLocked(myAnswerReady);
 
         photonView.RPC("SetAnswerReady", RpcTarget.MasterClient, PhotonNetwork.LocalPlayer.ActorNumber, myAnswerReady);
+    }
+
+    private void UpdateReadyButtonUI()
+    {
+        if (submitDrawingButtonText)
+            submitDrawingButtonText.text = myDrawingReady ? "✓ 完了（解除）" : "完了";
+
+        if (submitAnswerButtonText)
+            submitAnswerButtonText.text = myAnswerReady ? "✓ 提出（解除）" : "提出";
     }
 
     [PunRPC]
@@ -409,6 +464,7 @@ public class DengonGameManager : MonoBehaviourPunCallbacks
         TryAdvanceIfAllReady();
     }
 
+    // 早期終了ボタン全員押してたら次のフェーズに強制移行
     private void TryAdvanceIfAllReady()
     {
         if (!PhotonNetwork.IsMasterClient) return;
@@ -431,47 +487,6 @@ public class DengonGameManager : MonoBehaviourPunCallbacks
                 ForceFinishAnswerPhaseEarly();
             }
         }
-    }
-
-    private void UpdateReadyButtonUI()
-    {
-        if (submitDrawingButtonText)
-            submitDrawingButtonText.text = myDrawingReady ? "✓ 完了（解除）" : "完了";
-
-        if (submitAnswerButtonText)
-            submitAnswerButtonText.text = myAnswerReady ? "✓ 提出（解除）" : "提出";
-    }
-
-    [PunRPC]
-    private void SetGamePlay()
-    {
-        if (currentRound == 0 && myTheme != null && !string.IsNullOrWhiteSpace(myTheme.theme))
-        {
-            photonView.RPC("ReceiveSavedAnswer", RpcTarget.MasterClient, myTheme.theme, currentOwnerID);
-        }
-        currentRound++;
-        dengonUIManager.Initialize(); // UIリセット
-
-        dengonUIManager.ResetAnswerSubmission();
-    }
-
-    [PunRPC]
-    private void UpdateThemeText()
-    {
-        string t = (myTheme != null) ? myTheme.theme : "";
-        themeText.text = $"お題：{t}";
-    }
-
-    [PunRPC]
-    private void SetLoadObj(bool isActive)
-    {
-        loadObj.SetActive(isActive);
-    }
-
-    [PunRPC]
-    private void MovePanel(Vector2 pos)
-    {
-        panels.transform.localPosition = pos;
     }
 
     private void DrawRoundFinished()
@@ -500,33 +515,6 @@ public class DengonGameManager : MonoBehaviourPunCallbacks
 
         // ここは直接遷移処理を呼ぶ（ガードで止まらないように）
         DrawRoundFinished_Internal();
-    }
-
-    [PunRPC]
-    private void SendPicture()
-    {
-        int nextActorNumber = myOrderList[currentRound];
-        Photon.Realtime.Player nextPlayer = PhotonNetwork.CurrentRoom.GetPlayer(nextActorNumber);
-        byte[] pngBytes = DengonDrawingManager.instance.GetPngBytes();
-        photonView.RPC("ReceiveDrawing", nextPlayer, pngBytes, currentOwnerID, PhotonNetwork.LocalPlayer.ActorNumber);
-        photonView.RPC("ReceiveSavedPicture", RpcTarget.MasterClient, pngBytes, currentOwnerID);
-    }
-
-    [PunRPC]
-    private void ReceiveDrawing(byte[] imgBytes, int ownerID, int fromActorNumber)
-    {
-        currentOwnerID = ownerID;
-        Texture2D receivedTex = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-        receivedTex.filterMode = FilterMode.Point;
-        receivedTex.LoadImage(imgBytes, true);
-
-        // 受信画像を表示
-        dengonShowPanelManager.SetShowPanel(receivedTex);
-        Photon.Realtime.Player fromPlayer = PhotonNetwork.CurrentRoom.GetPlayer(fromActorNumber);
-        Photon.Realtime.Player nextPlayer = PhotonNetwork.CurrentRoom.GetPlayer(myOrderList[currentRound]);
-        dengonShowPanelManager.SetFromText($"{fromPlayer.NickName}");
-        dengonShowPanelManager.SetToText($"{nextPlayer.NickName}");
-        dengonShowPanelManager.CreateGridTexture();
     }
 
     private void AnswerRoundFinished()
@@ -566,6 +554,38 @@ public class DengonGameManager : MonoBehaviourPunCallbacks
     }
 
     [PunRPC]
+    private void MovePanel(Vector2 pos)
+    {
+        panels.transform.localPosition = pos;
+    }
+
+    [PunRPC]
+    private void SendPicture()
+    {
+        int nextActorNumber = myOrderList[currentRound];
+        Photon.Realtime.Player nextPlayer = PhotonNetwork.CurrentRoom.GetPlayer(nextActorNumber);
+        byte[] pngBytes = DengonDrawingManager.instance.GetPngBytes();
+        photonView.RPC("ReceiveDrawing", nextPlayer, pngBytes, currentOwnerID, PhotonNetwork.LocalPlayer.ActorNumber);
+        photonView.RPC("ReceiveSavedPicture", RpcTarget.MasterClient, pngBytes, currentOwnerID);
+    }
+
+    [PunRPC]
+    private void ReceiveDrawing(byte[] imgBytes, int ownerID, int fromActorNumber)
+    {
+        currentOwnerID = ownerID;
+        Texture2D receivedTex = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+        receivedTex.filterMode = FilterMode.Point;
+        receivedTex.LoadImage(imgBytes, true);
+
+        // 受信画像を表示
+        dengonShowPanelManager.SetShowPanel(receivedTex);
+        Photon.Realtime.Player fromPlayer = PhotonNetwork.CurrentRoom.GetPlayer(fromActorNumber);
+        Photon.Realtime.Player nextPlayer = PhotonNetwork.CurrentRoom.GetPlayer(myOrderList[currentRound]);
+        dengonShowPanelManager.SetFromText($"{fromPlayer.NickName}");
+        dengonShowPanelManager.SetToText($"{nextPlayer.NickName}");
+    }
+
+    [PunRPC]
     private void StopCurrentTimer()
     {
         timerStopped = true;
@@ -593,7 +613,6 @@ public class DengonGameManager : MonoBehaviourPunCallbacks
     {
         currentOwnerID = ownerID;
         SetTheme(answer);
-        UpdateThemeText();
     }
 
     [PunRPC]
@@ -759,6 +778,7 @@ public class DengonGameManager : MonoBehaviourPunCallbacks
         isGameFinished = true;
         MovePanel(new Vector2(-4000, 0));
         dengonUIManager.Initialize();
+        DengonDrawingManager.instance.InitializeDrawField();
         DisplayResult();
     }
 
@@ -828,7 +848,14 @@ public class DengonGameManager : MonoBehaviourPunCallbacks
                 else if (n.kind == "pic")
                 {
                     var go = Instantiate(dengonPicturePrefab, content);
-                    go.transform.Find("RawImage").GetComponent<RawImage>().texture = (Texture2D)n.payload;
+
+                    var img = go.GetComponentInChildren<RawImage>();
+                    var arf = img.GetComponent<AspectRatioFitter>();
+                    var tex = (Texture2D)n.payload;
+
+                    img.texture = tex;
+                    arf.aspectRatio = (float)tex.width / tex.height;
+
                     go.transform.Find("NameText").GetComponent<Text>().text = n.nick;
                 }
                 else // "text"
@@ -868,7 +895,7 @@ public class DengonGameManager : MonoBehaviourPunCallbacks
 
     [SerializeField] GameObject restartButton; // 設定再利用ボタン
 
-    public void RestartGame()
+    public void OnClickRestartGame()
     {
         if (!PhotonNetwork.IsMasterClient) return;
 

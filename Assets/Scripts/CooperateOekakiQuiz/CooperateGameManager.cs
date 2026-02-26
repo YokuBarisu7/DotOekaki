@@ -6,6 +6,7 @@ using System.Text;
 using UnityEngine;
 using UnityEngine.UI;
 
+
 public class CooperateGameManager : MonoBehaviourPunCallbacks
 {
     public static CooperateGameManager instance;
@@ -14,10 +15,11 @@ public class CooperateGameManager : MonoBehaviourPunCallbacks
     [SerializeField] CooperateUIManager dotUIManager;
     [SerializeField] QuizQuestion currentTheme;
 
-    private List<int> questionerOrder = new List<int>(); // 出題者の順番を保持するリスト
-    private int currentQuestionerIndex = 0; // 現在の出題者のインデックス
     [SerializeField] int[] questionerNumbers = new int[2]; // 出題者の番号を保持する配列
     public int[] QuestionerNumbers => questionerNumbers;
+
+    int lastQ1 = -1;
+    int lastQ2 = -1;
 
     [SerializeField] GameObject panels;
     [SerializeField] GameObject loadObj;
@@ -44,13 +46,14 @@ public class CooperateGameManager : MonoBehaviourPunCallbacks
 
     [SerializeField] Transform pictureList; // 結果表示用の画像の親オブジェクト
     [SerializeField] GameObject picturePrefab; // 結果表示用の画像プレハブ
-    private List<Texture2D> savedPictures = new List<Texture2D>(); // 保存された画像のリスト
+    private List<SavedResult> savedPictures = new List<SavedResult>(); // 保存された画像のリスト
 
     [SerializeField] GameObject changeSettingButton; // 設定変更ボタン
     [SerializeField] GameObject reuseSettingButton; // 設定再利用ボタン
 
     private Dictionary<int, int> correctPoints = new Dictionary<int, int>(); // プレイヤーの正解数を保持する辞書
     private Dictionary<int, int> correctedPoints = new Dictionary<int, int>(); // プレイヤーの正解された回数を保持する辞書
+
 
     private void Awake()
     {
@@ -144,7 +147,6 @@ public class CooperateGameManager : MonoBehaviourPunCallbacks
         if (PhotonNetwork.IsMasterClient)
         {
             currentRound = -1;
-            GenerateQuestionerOrder(); // 出題者の順番を生成
             MasterAdvanceRound();
             photonView.RPC("StartTimer", RpcTarget.All); // タイマーを開始
             photonView.RPC("SetLoadObj", RpcTarget.All, false); // ロードオブジェクトを非表示
@@ -194,10 +196,11 @@ public class CooperateGameManager : MonoBehaviourPunCallbacks
         difficulty = PlayerPrefs.GetInt("Difficulty", 0);
 
         photonView.RPC("SyncOption", RpcTarget.All, questionCount, timeLimit);
-        photonView.RPC("SetQuestioner", RpcTarget.All);
         photonView.RPC("SyncSettings", RpcTarget.All);
         photonView.RPC("MoveGamePanel", RpcTarget.All, new Vector2(0, 0));
         photonView.RPC("SetLoadObj", RpcTarget.All, true);
+
+        SetReady(false);
 
         themeGenerator.BroadcastThemes(difficulty);
     }
@@ -207,10 +210,11 @@ public class CooperateGameManager : MonoBehaviourPunCallbacks
         if (!PhotonNetwork.IsMasterClient) return;
 
         photonView.RPC("SyncOption", RpcTarget.All, questionCount, timeLimit);
-        photonView.RPC("SetQuestioner", RpcTarget.All);
         photonView.RPC("SyncSettings", RpcTarget.All);
         photonView.RPC("MoveGamePanel", RpcTarget.All, new Vector2(0, 0));
         photonView.RPC("SetLoadObj", RpcTarget.All, true);
+
+        SetReady(false);
 
         themeGenerator.BroadcastThemes(difficulty);
     }
@@ -231,9 +235,9 @@ public class CooperateGameManager : MonoBehaviourPunCallbacks
 
         InitializePlayerPoints();
         DestroyResultPrefabs();
+        isFinished = false;
 
-        Invoke("StartTimer", 1.0f);
-        isFinished = false; // ゲーム開始時にリセット
+        SetReady(false);
     }
 
     [PunRPC]
@@ -242,32 +246,45 @@ public class CooperateGameManager : MonoBehaviourPunCallbacks
         panels.transform.localPosition = pos;
     }
 
-    private void GenerateQuestionerOrder()
+    // 前回と同じペアにならないようにランダムに２人選出
+    private void PickTwoQuestionersAvoidLast(out int q1, out int q2)
     {
-        questionerOrder.Clear();
-        foreach (Player player in PhotonNetwork.PlayerList)
+        var players = PhotonNetwork.PlayerList;
+        int n = players.Length;
+
+        if (n < 3)
         {
-            questionerOrder.Add(player.ActorNumber);
+            q1 = q2 = -1;
+            Debug.LogWarning("協力モードは3人以上必要");
+            return;
         }
 
-        // ランダムにシャッフル
-        for (int i = questionerOrder.Count - 1; i > 0; i--)
-        {
-            int j = Random.Range(0, i + 1);
-            int temp = questionerOrder[i];
-            questionerOrder[i] = questionerOrder[j];
-            questionerOrder[j] = temp;
-        }
-        currentQuestionerIndex = 0; // インデックスをリセット
+        // 試行回数に上限を付けて無限ループ防止
+        const int MaxTries = 50;
 
-        photonView.RPC("SyncQuestionerOrder", RpcTarget.All, questionerOrder.ToArray());
+        for (int t = 0; t < MaxTries; t++)
+        {
+            int a = players[Random.Range(0, n)].ActorNumber;
+            int b;
+            do { b = players[Random.Range(0, n)].ActorNumber; }
+            while (b == a);
+
+            if (!IsSamePairUnordered(a, b, lastQ1, lastQ2))
+            {
+                q1 = a;
+                q2 = b;
+                return;
+            }
+        }
+
+        // ここに来たら「回避できなかった」ので諦めて出す（3人なら基本ここには来ない）
+        q1 = players[0].ActorNumber;
+        q2 = players[1].ActorNumber;
     }
 
-    [PunRPC]
-    private void SyncQuestionerOrder(int[] actorNumbers)
+    private bool IsSamePairUnordered(int a1, int a2, int b1, int b2)
     {
-        questionerOrder = new List<int>(actorNumbers);
-        currentQuestionerIndex = 0;
+        return (a1 == b1 && a2 == b2) || (a1 == b2 && a2 == b1);
     }
 
     private void MasterAdvanceRound()
@@ -286,12 +303,13 @@ public class CooperateGameManager : MonoBehaviourPunCallbacks
             return;
         }
 
-        GenerateQuestionerOrder();
+        PickTwoQuestionersAvoidLast(out int q1, out int q2);
+        if (q1 < 0 || q2 < 0) return;
 
-        questionerNumbers[0] = questionerOrder[currentQuestionerIndex];
-        questionerNumbers[1] = questionerOrder[(currentQuestionerIndex + 1)];
+        lastQ1 = q1;
+        lastQ2 = q2;
 
-        photonView.RPC("ApplyRoundState", RpcTarget.All, questionerNumbers[0], questionerNumbers[1], currentRound);
+        photonView.RPC("ApplyRoundState", RpcTarget.All, q1, q2, currentRound);
     }
 
     [PunRPC]
@@ -303,19 +321,14 @@ public class CooperateGameManager : MonoBehaviourPunCallbacks
 
         dotUIManager.Initialize(); // UIの初期化
         CooperateDrawingManager.instance.InitializeDrawField(); // DrawFieldの初期化
-        if (PhotonNetwork.LocalPlayer.ActorNumber == questionerNumbers[0] || PhotonNetwork.LocalPlayer.ActorNumber == questionerNumbers[1])
-        {
-            CooperateDrawingManager.instance.SetDrawable(true);
-        }
-        else
-        {
-            CooperateDrawingManager.instance.SetDrawable(false);
-        }
+        CooperateDrawingManager.instance.SetDrawable(IsQuestioner); // 出題者のみ描けるように
 
         currentTheme = themeGenerator.GetTheme(currentRound);
         UpdateText();
         countText.text = $"残り\n{questionCount - currentRound} 問";
     }
+
+    private bool IsQuestioner => PhotonNetwork.LocalPlayer.ActorNumber == questionerNumbers[0] || PhotonNetwork.LocalPlayer.ActorNumber == questionerNumbers[1];
 
     [PunRPC]
     private void RequestAdvanceRound()
@@ -416,8 +429,6 @@ public class CooperateGameManager : MonoBehaviourPunCallbacks
         dotUIManager.SetThemeText(IsQuestioner, currentTheme.question);
     }
 
-    private bool IsQuestioner => PhotonNetwork.LocalPlayer.ActorNumber == questionerNumbers[0] || PhotonNetwork.LocalPlayer.ActorNumber == questionerNumbers[1];
-
     [PunRPC]
     private void StartTimer()
     {
@@ -457,7 +468,7 @@ public class CooperateGameManager : MonoBehaviourPunCallbacks
 
     private void DestroyResultPrefabs()
     {
-        foreach (GameObject prefab in resultPrefabs)
+        foreach (var prefab in resultPrefabs)
         {
             Destroy(prefab);
         }
@@ -467,9 +478,9 @@ public class CooperateGameManager : MonoBehaviourPunCallbacks
         {
             Destroy(child.gameObject);
         }
-        foreach (var tex in savedPictures)
+        foreach (var picture in savedPictures)
         {
-            Destroy(tex);
+            Destroy(picture.texture);
         }
         savedPictures.Clear();
     }
@@ -562,21 +573,29 @@ public class CooperateGameManager : MonoBehaviourPunCallbacks
     [PunRPC]
     private void SavedPicture()
     {
-        Texture2D texture = new Texture2D(CooperateDrawingManager.instance.texture.width, CooperateDrawingManager.instance.texture.height, TextureFormat.RGBA32, false);
-        texture.filterMode = FilterMode.Point;
-        texture.SetPixels(CooperateDrawingManager.instance.texture.GetPixels());
-        texture.Apply();
-        savedPictures.Add(texture);
+        var src = CooperateDrawingManager.instance.texture;
+        Texture2D copy = new Texture2D(src.width, src.height, TextureFormat.RGBA32, false);
+        copy.filterMode = FilterMode.Point;
+        copy.SetPixels32(src.GetPixels32());
+        copy.Apply();
+
+        string theme = currentTheme != null ? currentTheme.question : "(no theme)";
+        savedPictures.Add(new SavedResult(theme, copy));
     }
 
     private void DisplaySavedPictures()
     {
-        foreach (Texture2D picture in savedPictures)
+        foreach (var picture in savedPictures)
         {
             GameObject pictureEntry = Instantiate(picturePrefab, pictureList);
-            Transform rawImageTransform = pictureEntry.transform.Find("RawImage");
-            RawImage rawImage = rawImageTransform.GetComponent<RawImage>();
-            rawImage.texture = picture;
+            var rawImage = pictureEntry.GetComponentInChildren<RawImage>();
+            rawImage.texture = picture.texture;
+
+            var themeText = pictureEntry.transform.Find("ThemeText").GetComponent<Text>();
+            themeText.text = picture.theme;
+
+            var fitter = rawImage.GetComponent<AspectRatioFitter>();
+            fitter.aspectRatio = (float)picture.texture.width / picture.texture.height;
         }
     }
 

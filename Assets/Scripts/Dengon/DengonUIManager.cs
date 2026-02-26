@@ -24,8 +24,8 @@ public class DengonUIManager : MonoBehaviour
     [SerializeField] SizeInputField heightInputField;
     [SerializeField] Image currentColor;
     [SerializeField] Toggle mekakushiToggle;
-
-    [SerializeField] bool isBlind;
+    [SerializeField] Slider brushSizeSlider;
+    [SerializeField] ColorPalette palette;
 
     [SerializeField] GameObject sizeChangerPanel;
     [SerializeField] GameObject colorSpectrum;
@@ -43,76 +43,91 @@ public class DengonUIManager : MonoBehaviour
     private bool isGameFinished = false;
 
     Transform parentTransform;
+    DengonDrawingManager dm;
 
 
     private void Start()
     {
-        backButton1.onClick.AddListener(() =>
-        {
-            PhotonManager.instance.OnLeaveRoomAndDestroy();
-        });
-        backButton2.onClick.AddListener(() =>
-        {
-            PhotonManager.instance.OnLeaveRoomAndDestroy();
-        });
+        TryBind();
+
+        backButton1.onClick.AddListener(() => { PhotonManager.instance.OnLeaveRoomAndDestroy(); });
+        backButton2.onClick.AddListener(() => { PhotonManager.instance.OnLeaveRoomAndDestroy(); });
+        brushSizeSlider.onValueChanged.AddListener(OnBrushSizeSliderChanged);
+        mekakushiToggle.onValueChanged.AddListener(_ => OnMekakushiToggle());
 
         parentTransform = tabs[0].transform.parent;
 
         RefreshAnswerUI();
     }
 
+    private void TryBind()
+    {
+        if (dm == null) dm = DengonDrawingManager.instance;
+
+        dm.OnDrawableChanged += OnDrawableChanged;
+        dm.OnToolModeChanged += OnToolModeChanged;
+        dm.OnHistoryChanged += OnHistoryChanged;
+        dm.OnHasDrawingChanged += OnHasDrawingChanged;
+        dm.OnColorChanged += OnColorChanged;
+        dm.OnBrushSizeChanged += OnBrushSizeChanged;
+        widthInputField.OnStateChanged += OnSizeInputFieldValueChanged;
+        heightInputField.OnStateChanged += OnSizeInputFieldValueChanged;
+
+        RefreshAllUI();
+    }
+
+    private void RefreshAllUI()
+    {
+        OnDrawableChanged(dm.IsDrawable);
+        OnToolModeChanged(dm.currentMode);
+        OnHistoryChanged(dm.undoStackCount, dm.redoStackCount);
+        OnHasDrawingChanged(dm.HasDrawingCached);
+        OnColorChanged(dm.DrawColor);
+    }
+
+    // 初期化処理
     public void Initialize()
     {
-        // 初期化処理
-        dengonGridGenerator.InitializeGridToggle();
         sizeChangerPanel.SetActive(false);
         colorSpectrum.SetActive(false);
         backPanel.SetActive(false);
         mekakushiToggle.isOn = false;
-        DengonDrawingManager.instance.InitializeDrawField();
     }
 
-    private void Update()
+    private void OnDrawableChanged(bool drawable)
     {
-        SetActive(blindPanel, isBlind);
-        SetActive(penButtonCover, DengonDrawingManager.instance.currentMode == DengonDrawingManager.ToolMode.Pen);
-        SetActive(fillButtonCover, DengonDrawingManager.instance.currentMode == DengonDrawingManager.ToolMode.Fill);
-        SetActive(lineButtonCover, DengonDrawingManager.instance.currentMode == DengonDrawingManager.ToolMode.Line);
-        SetActive(circleButtonCover, DengonDrawingManager.instance.currentMode == DengonDrawingManager.ToolMode.Circle);
-        SetActive(rectangleButtonCover, DengonDrawingManager.instance.currentMode == DengonDrawingManager.ToolMode.Rectangle);
-
-        SetInteractable(undoButton, DengonDrawingManager.instance.undoStackCount > 1);
-        SetInteractable(redoButton, DengonDrawingManager.instance.redoStackCount > 0);
-        SetInteractable(clearButton, DengonDrawingManager.instance.HasDrawing());
-
-        currentColor.color = DengonDrawingManager.instance.drawColor;
-
-        isBlind = mekakushiToggle.isOn;
-
-        if (heightInputField.IsError || widthInputField.IsError)
-        {
-            SetInteractable(sizeApplyButton, false);
-        }
-        else
-        {
-            SetInteractable(sizeApplyButton, true);
-        }
+        SetActive(dotUI, drawable);
     }
 
-    private void SetActive(GameObject obj, bool isActive)
+    private void OnToolModeChanged(DengonDrawingManager.ToolMode mode)
     {
-        if (obj.activeSelf != isActive)
-        {
-            obj.SetActive(isActive);
-        }
+        SetActive(penButtonCover, mode == DengonDrawingManager.ToolMode.Pen);
+        SetActive(fillButtonCover, mode == DengonDrawingManager.ToolMode.Fill);
+        SetActive(lineButtonCover, mode == DengonDrawingManager.ToolMode.Line);
+        SetActive(circleButtonCover, mode == DengonDrawingManager.ToolMode.Circle);
+        SetActive(rectangleButtonCover, mode == DengonDrawingManager.ToolMode.Rectangle);
     }
 
-    private void SetInteractable(Button button, bool isInteractable)
+    private void OnHistoryChanged(int undoCount, int redoCount)
     {
-        if (button.interactable != isInteractable)
-        {
-            button.interactable = isInteractable;
-        }
+        SetInteractable(undoButton, undoCount > 1);
+        SetInteractable(redoButton, redoCount > 0);
+    }
+
+    private void OnHasDrawingChanged(bool hasDrawing)
+    {
+        SetInteractable(clearButton, hasDrawing);
+    }
+
+    private void OnColorChanged(Color color)
+    {
+        currentColor.color = color;
+    }
+
+    private void OnBrushSizeChanged(int size)
+    {
+        if ((int)brushSizeSlider.value != size)
+            brushSizeSlider.SetValueWithoutNotify(size);
     }
 
     public void SetAnswerPhase(bool enabled)
@@ -184,99 +199,31 @@ public class DengonUIManager : MonoBehaviour
     public void OnClickSizeApplyButton()
     {
         DengonDrawingManager.instance.ResetDrawFieldSize(widthInputField.inputPixelSize, heightInputField.inputPixelSize);
-        if (DengonDrawingManager.instance.CanvasWidth > 50 || DengonDrawingManager.instance.CanvasHeight > 50)
+        dengonGridGenerator.SetGridCount(widthInputField.inputPixelSize, heightInputField.inputPixelSize );
+    }
+
+    public void OnClickUndoButton() => dm.UndoButton();
+    public void OnClickRedoButton() => dm.RedoButton();
+    public void OnClickAllClearButton() => dm.AllClear();
+    public void OnClickColor(int index) => dm.ChangeColor(palette.colors[index]);
+    public void OnClickToolButton(int index) => dm.ChangeMode((DengonDrawingManager.ToolMode)index);
+    public void OnClickEraserButton() => dm.ChangeColor(new Color(0, 0, 0, 0));
+    public void ToggleIsDrawable() => dm.SetDrawable(!dm.IsDrawable);
+    public void OnBrushSizeSliderChanged(float v) => dm.SetBrushSize((int)v);
+
+    public void OnSizeInputFieldValueChanged()
+    {
+        if (heightInputField.IsError || widthInputField.IsError)
         {
-            dengonGridGenerator.ChangeInteractableGridToggle(false);
+            SetInteractable(sizeApplyButton, false);
         }
         else
         {
-            dengonGridGenerator.ChangeInteractableGridToggle(true);
+            SetInteractable(sizeApplyButton, true);
         }
     }
 
-    public void OnClickUndoButton()
-    {
-        DengonDrawingManager.instance.UndoButton();
-    }
-
-    public void OnClickRedoButton()
-    {
-        DengonDrawingManager.instance.RedoButton();
-    }
-    public void OnClickAllClearButton()
-    {
-        DengonDrawingManager.instance.AllClear();
-    }
-
-    public void ToggleIsDrawable()
-    {
-        DengonDrawingManager.instance.isDrawable = !DengonDrawingManager.instance.isDrawable;
-    }
-
-    // ツールボタン
-    public void OnClickToolButton(int index)
-    {
-        switch (index)
-        {
-            case 0:
-                DengonDrawingManager.instance.ChangeMode(DengonDrawingManager.ToolMode.Pen);
-                break;
-            case 1:
-                DengonDrawingManager.instance.ChangeMode(DengonDrawingManager.ToolMode.Fill);
-                break;
-            case 2:
-                DengonDrawingManager.instance.ChangeMode(DengonDrawingManager.ToolMode.Line);
-                break;
-            case 3:
-                DengonDrawingManager.instance.ChangeMode(DengonDrawingManager.ToolMode.Circle);
-                break;
-            case 4:
-                DengonDrawingManager.instance.ChangeMode(DengonDrawingManager.ToolMode.Rectangle);
-                break;
-        }
-    }
-
-    public void OnClickColorButton(int index)
-    {
-        switch (index)
-        {
-            case 0:
-                DengonDrawingManager.instance.ChangeColor(Color.black);
-                break;
-            case 1:
-                DengonDrawingManager.instance.ChangeColor(Color.white);
-                break;
-            case 2:
-                DengonDrawingManager.instance.ChangeColor(Color.red);
-                break;
-            case 3:
-                DengonDrawingManager.instance.ChangeColor(Color.blue);
-                break;
-            case 4:
-                DengonDrawingManager.instance.ChangeColor(Color.green);
-                break;
-            case 5:
-                DengonDrawingManager.instance.ChangeColor(Color.yellow);
-                break;
-            case 6:
-                DengonDrawingManager.instance.ChangeColor(Color.magenta);
-                break;
-            case 7:
-                DengonDrawingManager.instance.ChangeColor(Color.cyan);
-                break;
-            case 8:
-                DengonDrawingManager.instance.ChangeColor(Color.gray);
-                break;
-            case 9:
-                DengonDrawingManager.instance.ChangeColor(new Color32(246, 184, 148, 255));
-                break;
-        }
-    }
-
-    public void OnClickEraserButton()
-    {
-        DengonDrawingManager.instance.ChangeColor(new Color(0, 0, 0, 0));
-    }
+    private void OnMekakushiToggle() => blindPanel.SetActive(mekakushiToggle.isOn);
 
     public void ShowCountdown(string text)
     { 
@@ -325,6 +272,22 @@ public class DengonUIManager : MonoBehaviour
                 tabs[i].SetActive(false);
                 panels[i].SetActive(false);
             }
+        }
+    }
+
+    private void SetActive(GameObject obj, bool isActive)
+    {
+        if (obj.activeSelf != isActive)
+        {
+            obj.SetActive(isActive);
+        }
+    }
+
+    private void SetInteractable(Button button, bool isInteractable)
+    {
+        if (button.interactable != isInteractable)
+        {
+            button.interactable = isInteractable;
         }
     }
 }

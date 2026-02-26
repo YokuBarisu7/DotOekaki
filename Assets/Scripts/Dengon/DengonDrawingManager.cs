@@ -1,25 +1,40 @@
 using UnityEngine;
 using UnityEngine.UI;
 using System.Collections.Generic;
+using System;
 
 public class DengonDrawingManager : MonoBehaviour
 {
     public static DengonDrawingManager instance;
 
-    public Texture2D texture;
     [SerializeField] GameObject drawField;
     [SerializeField] RawImage drawingPanel;
-    public int CanvasWidth; // キャンバスの横幅
-    public int CanvasHeight; // キャンバスの縦幅
-    public Color drawColor; // ペンの色
-    public int brushSize; // ブラシの大きさ
+    [SerializeField] int initialWidth;
+    [SerializeField] int initialHeight;
+    [SerializeField] Color drawColor;
+    [SerializeField] int brushSize;
+
+    public Texture2D texture;
+    public int CanvasWidth { get; private set; }
+    public int CanvasHeight { get; private set; }
+    public Color DrawColor => drawColor;
+    public int BrushSize => brushSize;
+    public ToolMode currentMode { get; private set; } = ToolMode.Pen;
+    public int undoStackCount { get { return undoStack.Count; } }
+    public int redoStackCount { get { return redoStack.Count; } }
+    public bool IsDrawable => isDrawable;
+    public bool HasDrawingCached => hasDrawing;
+
+    Color32[] clearBuffer;
+    Stack<Color32[]> undoStack; // 元に戻すためのスタック
+    Stack<Color32[]> redoStack; // やり直しのためのスタック
     Vector2Int? lastPoint = null; // 前回の描画位置
-    Stack<Color[]> undoStack; // 元に戻すためのスタック
-    Stack<Color[]> redoStack; // やり直しのためのスタック
     Vector2Int? startPoint = null; // 直線モードの始点
     Vector2Int startPixel; // 円モード、長方形モードの始点
     bool isDrawing = false; // 描画中かどうか
-    public bool isDrawable = false; // 描画可能かどうか
+    bool isDrawable = false; // 描画可能かどうか
+    bool hasDrawing = false; // 何か描かれているかどうか
+    const float BaseDrawCanvasSize = 900f;
     DrawingUtils drawer;
 
     public enum ToolMode
@@ -30,10 +45,14 @@ public class DengonDrawingManager : MonoBehaviour
         Circle,
         Rectangle,
     }
-    public ToolMode currentMode;
 
-    public int undoStackCount { get { return undoStack.Count; } }
-    public int redoStackCount { get { return redoStack.Count; } }
+    public event Action<Color> OnColorChanged;
+    public event Action<int> OnBrushSizeChanged;
+    public event Action<ToolMode> OnToolModeChanged;
+    public event Action<int, int> OnFieldSizeChanged;
+    public event Action<int, int> OnHistoryChanged;
+    public event Action<bool> OnHasDrawingChanged;
+    public event Action<bool> OnDrawableChanged;
 
     private void Awake()
     {
@@ -41,6 +60,13 @@ public class DengonDrawingManager : MonoBehaviour
         {
             instance = this;
         }
+        else
+        {
+            Destroy(gameObject);
+        }
+        // スタックの初期生成
+        undoStack = new Stack<Color32[]>();
+        redoStack = new Stack<Color32[]>();
     }
 
     private void Start()
@@ -50,55 +76,47 @@ public class DengonDrawingManager : MonoBehaviour
 
     public void InitializeDrawField()
     {
-        // キャンバスの初期サイズ
-        CanvasWidth = CanvasHeight = 50; // 初期サイズを設定
-
-        // スタックの初期生成
-        undoStack = new Stack<Color[]>();
-        redoStack = new Stack<Color[]>();
-
         // Texture2Dを作成
-        CreateTexture(CanvasWidth, CanvasHeight);
+        CreateTexture(initialWidth, initialHeight);
+        SetDrawFieldSize(initialWidth, initialHeight);
 
-        // ゲーム開始時はペンモード
-        currentMode = ToolMode.Pen;
-
-        SetDrawFieldSize(CanvasWidth, CanvasHeight);
-
-        // 初期の描画色とブラシサイズ
-        drawColor = Color.black; // 初期の描画色
-        brushSize = 1; // 初期のブラシサイズ
+        // ゲーム開始時は黒色ペンモード
+        ChangeColor(Color.black);
+        SetBrushSize(1);
+        ChangeMode(ToolMode.Pen);
     }
 
     // テクスチャを作成
     private void CreateTexture(int width, int height)
     {
+        if (texture != null)
+        {
+            Destroy(texture);
+            texture = null;
+        }
+
         CanvasWidth = width;
         CanvasHeight = height;
-        texture = new Texture2D(CanvasWidth, CanvasHeight, TextureFormat.RGBA32, false);
-        texture.filterMode = FilterMode.Point; // ドット絵くっきりモード
-        ClearCanvas(); // テクスチャを初期化
+        texture = new Texture2D(CanvasWidth, CanvasHeight, TextureFormat.RGBA32, false)
+        {
+            filterMode = FilterMode.Point
+        };
+        ClearCanvas();
         drawingPanel.texture = texture;
         undoStack.Clear();
         redoStack.Clear();
-        undoStack.Push(texture.GetPixels());
+        undoStack.Push(texture.GetPixels32());
         drawer = new DrawingUtils(texture, drawColor, brushSize);
     }
 
     // 描画領域のサイズを設定
     private void SetDrawFieldSize(int width, int height)
     {
-        RectTransform rectTransform = drawField.GetComponent<RectTransform>();
+        var rectTransform = drawField.GetComponent<RectTransform>();
         float aspectRatio = (float)width / height;
+        rectTransform.sizeDelta = aspectRatio > 1.0f ? new Vector2(BaseDrawCanvasSize, BaseDrawCanvasSize / aspectRatio) : new Vector2(BaseDrawCanvasSize * aspectRatio, BaseDrawCanvasSize);
 
-        if (aspectRatio > 1)
-        {
-            rectTransform.sizeDelta = new Vector2(900, 900 / aspectRatio);
-        }
-        else
-        {
-            rectTransform.sizeDelta = new Vector2(900 * aspectRatio, 900);
-        }
+        OnFieldSizeChanged?.Invoke(width, height);
     }
 
     public void ResetDrawFieldSize(int width, int height)
@@ -109,173 +127,105 @@ public class DengonDrawingManager : MonoBehaviour
 
     private void Update()
     {
-        Vector2 localPoint;
-        RectTransformUtility.ScreenPointToLocalPointInRectangle(drawingPanel.rectTransform, Input.mousePosition, null, out localPoint);
+        if (!isDrawable || texture == null) return;
+        if (!TryGetMouseLocalPoint(out var localPoint)) return;
+
+        switch (currentMode)
+        {
+            case ToolMode.Pen:
+                UpdatePen(localPoint);
+                break;
+
+            case ToolMode.Fill:
+                if (Input.GetMouseButtonDown(0) && IsInsideCanvas(localPoint))
+                {
+                    FloodFill(localPoint);
+                }
+                break;
+
+            case ToolMode.Line:
+                UpdateLine(localPoint);
+                break;
+
+            case ToolMode.Circle:
+            case ToolMode.Rectangle:
+                UpdateShapeDrag(localPoint);
+                break;
+        }
+    }
+
+    private bool TryGetMouseLocalPoint(out Vector2 localPoint)
+    {
+        return RectTransformUtility.ScreenPointToLocalPointInRectangle(
+            drawingPanel.rectTransform,
+            Input.mousePosition,
+            null,
+            out localPoint
+            );
+    }
+    private bool TryGetPixelPos(Vector2 localPoint, out Vector2Int pixelPos)
+    {
+        pixelPos = default;
 
         Rect rect = drawingPanel.rectTransform.rect;
+        if (rect.width <= 0 || rect.height <= 0) return false;
+
         int x = Mathf.FloorToInt((localPoint.x - rect.x) / rect.width * texture.width);
         int y = Mathf.FloorToInt((localPoint.y - rect.y) / rect.height * texture.height);
 
-        if (!isDrawable)
+        // 範囲クランプ（外を触っても落ちないように）
+        x = Mathf.Clamp(x, 0, texture.width - 1);
+        y = Mathf.Clamp(y, 0, texture.height - 1);
+
+        pixelPos = new Vector2Int(x, y);
+        return true;
+    }
+
+    private bool IsInsideCanvas(Vector2 localPoint)
+    {
+        Rect rect = drawingPanel.rectTransform.rect;
+        return localPoint.x >= rect.x && localPoint.x <= rect.x + rect.width
+            && localPoint.y >= rect.y && localPoint.y <= rect.y + rect.height;
+    }
+
+    private void UpdatePen(Vector2 localPoint)
+    {
+        if (Input.GetMouseButtonDown(0))
         {
-            return;
+            if (IsInsideCanvas(localPoint)) isDrawing = true;
         }
 
-        // ペンツール
-        if (currentMode == ToolMode.Pen)
+        if (Input.GetMouseButton(0) && isDrawing)
         {
-            if (Input.GetMouseButtonDown(0))
-            {
-                if (IsInsideCanvas(localPoint))
-                {
-                    isDrawing = true;
-                }
-            }
-
-            if (Input.GetMouseButton(0))
-            {
-                if (isDrawing)
-                {
-                    if (IsInsideCanvas(localPoint))
-                    {
-                        DrawAtPoint(localPoint);
-                    }
-                }
-            }
-
-            if (Input.GetMouseButtonUp(0))
-            {
-                lastPoint = null;
-                if (isDrawing)
-                {
-                    SaveUndo();
-                    isDrawing = false;
-                }
-            }
+            DrawAtPoint(localPoint);
         }
 
-        // 塗りつぶしツール
-        else if (currentMode == ToolMode.Fill)
+        if (Input.GetMouseButtonUp(0))
         {
-            if (Input.GetMouseButtonDown(0))
+            lastPoint = null;
+            if (isDrawing)
             {
-                if (currentMode == ToolMode.Fill)
-                {
-                    if (!IsInsideCanvas(localPoint))
-                    {
-                        return;
-                    }
-                    FloodFill(localPoint);
-                }
-            }
-        }
-
-        // 直線ツール
-        else if (currentMode == ToolMode.Line)
-        {
-            if (Input.GetMouseButtonUp(0))
-            {
-                if (currentMode == ToolMode.Line)
-                {
-                    if (!IsInsideCanvas(localPoint))
-                    {
-                        return;
-                    }
-                    Vector2Int pixelPos = new Vector2Int(x, y);
-                    // 一回目のクリックで始点を設定
-                    if (startPoint == null)
-                    {
-                        startPoint = pixelPos;
-                    }
-                    else
-                    {
-                        DrawShape(startPoint.Value, pixelPos);
-                        SaveUndo();
-                        startPoint = null;
-                    }
-                }
-            }
-        }
-
-        // 円、長方形ツール
-        else if (currentMode == ToolMode.Circle || currentMode == ToolMode.Rectangle)
-        {
-            if (Input.GetMouseButtonDown(0))
-            {
-                // 始点の設定
-                if (currentMode == ToolMode.Circle || currentMode == ToolMode.Rectangle)
-                {
-                    if (!IsInsideCanvas(localPoint))
-                    {
-                        return;
-                    }
-                    Vector2Int pixelPos = new Vector2Int(x, y);
-                    if (!isDrawing)
-                    {
-                        startPixel = pixelPos;
-                        isDrawing = true;
-                    }
-                }
-            }
-            if (Input.GetMouseButtonUp(0))
-            {
-                if (currentMode == ToolMode.Circle || currentMode == ToolMode.Rectangle)
-                {
-                    if (isDrawing)
-                    {
-                        if (!IsInsideCanvas(localPoint))
-                        {
-                            isDrawing = false;
-                            return;
-                        }
-                        Vector2Int endPixel = new Vector2Int(x, y);
-                        DrawShape(startPixel, endPixel);
-                        SaveUndo();
-                        isDrawing = false;
-                    }
-                }
+                SaveUndo();
+                isDrawing = false;
             }
         }
     }
 
     private void DrawAtPoint(Vector2 localPoint)
     {
-        Rect rect = drawingPanel.rectTransform.rect;
+        if (!IsInsideCanvas(localPoint)) return;
+        if (!TryGetPixelPos(localPoint, out var pixelPos)) return;
 
-        // ローカル座標をTexture2Dの座標に変換
-        int x = Mathf.FloorToInt((localPoint.x - rect.x) / rect.width * texture.width);
-        int y = Mathf.FloorToInt((localPoint.y - rect.y) / rect.height * texture.height);
+        if (lastPoint.HasValue)
+        {
+            drawer.DrawLine(lastPoint.Value, pixelPos); // 2回目以降の描画
+        }
+        else
+        {
+            drawer.DrawPoint(pixelPos); // 最初の描画
+        }
 
-        if (IsInsideCanvas(localPoint))
-        {
-            if (lastPoint.HasValue)
-            {
-                drawer.DrawLine(lastPoint.Value, new Vector2Int(x, y)); // 2回目以降の描画
-            }
-            else
-            {
-                drawer.DrawPoint(new Vector2Int(x, y)); // 最初の描画
-            }
-
-            lastPoint = new Vector2Int(x, y);
-        }
-        texture.Apply();
-    }
-
-    private void DrawShape(Vector2Int start, Vector2Int end)
-    {
-        if (currentMode == ToolMode.Line)
-        {
-            drawer.DrawLine(start, end);
-        }
-        else if (currentMode == ToolMode.Circle)
-        {
-            drawer.DrawCircle(start, end);
-        }
-        else if (currentMode == ToolMode.Rectangle)
-        {
-            drawer.DrawRectangle(start, end);
-        }
+        lastPoint = pixelPos;
         texture.Apply();
     }
 
@@ -286,28 +236,84 @@ public class DengonDrawingManager : MonoBehaviour
         SaveUndo();
     }
 
-    private void SaveUndo()
+    private void UpdateLine(Vector2 localPoint)
     {
-        undoStack.Push(texture.GetPixels()); // 現在の状態を保存
-        redoStack.Clear(); // 新しく描画したらRedo履歴はクリア
+        if (Input.GetMouseButtonUp(0))
+        {
+            if (!IsInsideCanvas(localPoint)) return;
+            if (!TryGetPixelPos(localPoint, out var pixelPos)) return;
+
+            if (startPoint == null)
+            {
+                startPoint = pixelPos;
+                return;
+            }
+
+            DrawShape(startPoint.Value, pixelPos);
+            SaveUndo();
+            startPoint = null;
+        }
     }
 
-    public void UndoButton()
+    private void UpdateShapeDrag(Vector2 localPoint)
     {
-        Undo();
+        // 始点の設定
+        if (Input.GetMouseButtonDown(0) && IsInsideCanvas(localPoint))
+        {
+            if (!TryGetPixelPos(localPoint, out var pixelPos)) return;
+            startPixel = pixelPos;
+            isDrawing = true;
+        }
+
+        if (Input.GetMouseButtonUp(0) && isDrawing)
+        {
+            if (!IsInsideCanvas(localPoint))
+            {
+                isDrawing = false;
+                return;
+            }
+            if (!TryGetPixelPos(localPoint, out var endPixel))
+            {
+                isDrawing = false;
+                return;
+            }
+            DrawShape(startPixel, endPixel);
+            SaveUndo();
+            isDrawing = false;
+        }
     }
-    public void RedoButton()
+
+    private void DrawShape(Vector2Int start, Vector2Int end)
     {
-        Redo();
+        switch (currentMode)
+        {
+            case ToolMode.Line: drawer.DrawLine(start, end); break;
+            case ToolMode.Circle: drawer.DrawCircle(start, end); break;
+            case ToolMode.Rectangle: drawer.DrawRectangle(start, end); break;
+        }
+        texture.Apply();
     }
+
+    private void SaveUndo()
+    {
+        undoStack.Push(texture.GetPixels32()); // 現在の状態を保存
+        redoStack.Clear(); // 新しく描画したらRedo履歴はクリア
+        NotifyHistory();
+        SetHasDrawing(ComputeHasDrawing());
+    }
+
+    public void UndoButton() => Undo();
+    public void RedoButton() => Redo();
 
     private void Undo()
     {
         if (undoStackCount > 1)
         {
             redoStack.Push(undoStack.Pop());
-            texture.SetPixels(undoStack.Peek());
+            texture.SetPixels32(undoStack.Peek());
             texture.Apply();
+            NotifyHistory();
+            SetHasDrawing(ComputeHasDrawing());
         }
     }
     private void Redo()
@@ -315,8 +321,10 @@ public class DengonDrawingManager : MonoBehaviour
         if (redoStackCount > 0)
         {
             undoStack.Push(redoStack.Pop());
-            texture.SetPixels(undoStack.Peek());
+            texture.SetPixels32(undoStack.Peek());
             texture.Apply();
+            NotifyHistory();
+            SetHasDrawing(ComputeHasDrawing());
         }
     }
 
@@ -328,52 +336,83 @@ public class DengonDrawingManager : MonoBehaviour
 
     private void ClearCanvas()
     {
-        Color[] clearColors = new Color[texture.width * texture.height];
-        for (int i = 0; i < clearColors.Length; i++)
-        {
-            clearColors[i] = new Color(1, 1, 1, 0);
-        }
-        texture.SetPixels(clearColors);
+        if (texture == null) return;
+
+        EnsureClearBuffer();
+        texture.SetPixels32(clearBuffer);
         texture.Apply();
     }
 
-    // 盤面に何か描かれているかどうか
-    public bool HasDrawing()
+    private void EnsureClearBuffer()
     {
-        Color32[] pixels = texture.GetPixels32();
-        foreach (Color32 pixel in pixels)
+        int len = texture.width * texture.height;
+        if (clearBuffer == null || clearBuffer.Length != len)
         {
-            if (pixel.a != 0)
-            {
-                return true;
-            }
+            clearBuffer = new Color32[len];
+            var t = new Color32(0, 0, 0, 0);
+            for (int i = 0; i < len; i++) clearBuffer[i] = t;
         }
+    }
+
+    private bool ComputeHasDrawing()
+    {
+        var pixels = texture.GetPixels32();
+        for (int i = 0; i < pixels.Length; i++)
+            if (pixels[i].a != 0) return true;
         return false;
     }
 
-    private bool IsInsideCanvas(Vector2 localPoint)
+    private void SetHasDrawing(bool value)
     {
-        Rect rect = drawingPanel.rectTransform.rect;
-        return localPoint.x >= rect.x && localPoint.x <= rect.x + rect.width
-            && localPoint.y >= rect.y && localPoint.y <= rect.y + rect.height;
+        if (hasDrawing == value) return;
+        hasDrawing = value;
+        OnHasDrawingChanged?.Invoke(hasDrawing);
+    }
+
+    public void SetDrawable(bool value)
+    {
+        if (isDrawable == value) return;
+        isDrawable = value;
+        OnDrawableChanged?.Invoke(isDrawable);
+    }
+
+    private void NotifyHistory()
+    {
+        OnHistoryChanged?.Invoke(undoStackCount, redoStackCount);
     }
 
     public void ChangeMode(ToolMode mode)
     {
+        if (currentMode == mode) return;
+
         currentMode = mode;
         isDrawing = false;
+        startPoint = null;
+        lastPoint = null;
+        startPixel = default;
+
+        OnToolModeChanged?.Invoke(currentMode);
     }
 
     public void ChangeColor(Color color)
     {
+        if (drawColor == color) return;
+
         drawColor = color;
         drawer = new DrawingUtils(texture, drawColor, brushSize);
+
+        OnColorChanged?.Invoke(drawColor);
     }
 
-    public void OnValueChangedBrushSize(Slider slider)
+    public void SetBrushSize(int size)
     {
-        brushSize = (int)slider.value;
+        size = Mathf.Clamp(size, 1, 7);
+        if (brushSize == size) return;
+
+        brushSize = size;
         drawer = new DrawingUtils(texture, drawColor, brushSize);
+
+        OnBrushSizeChanged?.Invoke(brushSize);
     }
 
     public byte[] GetPngBytes()

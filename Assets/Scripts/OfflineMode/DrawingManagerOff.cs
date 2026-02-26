@@ -93,7 +93,6 @@ public class DrawingManagerOff : MonoBehaviour
     private void Update()
     {
         if (!isDrawable || texture == null) return;
-
         if (!TryGetMouseLocalPoint(out var localPoint)) return;
 
         switch (currentMode)
@@ -294,30 +293,22 @@ public class DrawingManagerOff : MonoBehaviour
 
     private void DrawShape(Vector2Int start, Vector2Int end)
     {
-        if (currentMode == ToolMode.Line)
+        switch (currentMode)
         {
-            drawer.DrawLine(start, end);
-        }
-        else if (currentMode == ToolMode.Circle)
-        {
-            drawer.DrawCircle(start, end);
-        }
-        else if (currentMode == ToolMode.Rectangle)
-        {
-            drawer.DrawRectangle(start, end);
+            case ToolMode.Line: drawer.DrawLine(start, end); break;
+            case ToolMode.Circle: drawer.DrawCircle(start, end); break;
+            case ToolMode.Rectangle: drawer.DrawRectangle(start, end); break;
         }
         texture.Apply();
     }
 
-    private void SaveUndo(bool has)
+    private void SaveUndo()
     {
         undoStack.Push(texture.GetPixels()); // 現在の状態を保存
         redoStack.Clear(); // 新しく描画したらRedo履歴はクリア
         NotifyHistory();
-        SetHasDrawing(has);
+        SetHasDrawing(ComputeHasDrawing());
     }
-
-    private void SaveUndo() => SaveUndo(true);
 
     public void UndoButton() => Undo();
     public void RedoButton() => Redo();
@@ -348,7 +339,7 @@ public class DrawingManagerOff : MonoBehaviour
     public void AllClear()
     {
         ClearCanvas();
-        SaveUndo(false);
+        SaveUndo();
     }
 
     private void ClearCanvas()

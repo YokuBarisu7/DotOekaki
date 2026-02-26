@@ -15,8 +15,8 @@ public class SVMap : MonoBehaviour, IPointerDownHandler, IDragHandler
     Color32[] pixels;
 
     float hue;
-    public float s;
-    public float v;
+    float s;
+    float v;
 
     void Start()
     {

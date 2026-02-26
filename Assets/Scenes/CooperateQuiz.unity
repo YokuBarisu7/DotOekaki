@@ -812,7 +812,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 911527005}
         m_TargetAssemblyTypeName: CooperateGameManager, Assembly-CSharp
-        m_MethodName: StartGame
+        m_MethodName: OnClickStartGame
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -2057,11 +2057,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ad89ddc6d86333f4faf3685330c9325b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  svRawImage: {fileID: 235063395}
   svCursor: {fileID: 1747154464}
   svCursorImage: {fileID: 1747154465}
-  s: 0
-  v: 0
+  texSize: 256
 --- !u!1 &243805865
 GameObject:
   m_ObjectHideFlags: 0
@@ -3833,7 +3831,7 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 0}
+      - m_Target: {fileID: 519852757}
         m_TargetAssemblyTypeName: UnityEngine.GameObject, UnityEngine
         m_MethodName: SetActive
         m_Mode: 6
@@ -7735,8 +7733,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 40161e840d316c443a2c5f85512653fd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  themeGenerator: {fileID: 0}
-  dotUIManager: {fileID: 0}
+  themeGenerator: {fileID: 171822496}
+  dotUIManager: {fileID: 275919349}
   currentTheme:
     question: 
     answerList: []
@@ -9526,266 +9524,516 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   questions:
-  - question: "\u6885\u96E8"
+  - question: "\u30A2\u30D2\u30EB"
     answerList:
-    - "\u3064\u3086"
-    - "\u30C4\u30E6"
-    - "\u6885\u96E8"
-  - question: "\u96E8"
+    - "\u30A2\u30D2\u30EB"
+    - "\u3042\u3072\u308B"
+    - "\u30A2\u30D2\u30EB"
+  - question: "\u30A2\u30EA"
     answerList:
-    - "\u3042\u3081"
-    - "\u30A2\u30E1"
-    - "\u96E8"
-  - question: "\u66C7\u308A"
+    - "\u30A2\u30EA"
+    - "\u3042\u308A"
+    - "\u30A2\u30EA"
+  - question: "\u30A4\u30AB"
     answerList:
-    - "\u304F\u3082\u308A"
-    - "\u30AF\u30E2\u30EA"
-    - "\u66C7\u308A"
-  - question: "\u6E7F\u6C17"
+    - "\u30A4\u30AB"
+    - "\u3044\u304B"
+    - "\u30A4\u30AB"
+  - question: "\u30A4\u30B0\u30A2\u30CA"
     answerList:
-    - "\u3057\u3063\u3051"
-    - "\u30B7\u30C3\u30B1"
-    - "\u6E7F\u6C17"
-  - question: "\u96E8\u96F2"
+    - "\u30A4\u30B0\u30A2\u30CA"
+    - "\u3044\u3050\u3042\u306A"
+    - "\u30A4\u30B0\u30A2\u30CA"
+  - question: "\u30A4\u30E2\u30EA"
     answerList:
-    - "\u3042\u307E\u3050\u3082"
-    - "\u30A2\u30DE\u30B0\u30E2"
-    - "\u96E8\u96F2"
-  - question: "\u96F2"
+    - "\u30A4\u30E2\u30EA"
+    - "\u3044\u3082\u308A"
+    - "\u30A4\u30E2\u30EA"
+  - question: "\u30A4\u30EB\u30AB"
     answerList:
-    - "\u304F\u3082"
-    - "\u30AF\u30E2"
-    - "\u96F2"
-  - question: "\u53F0\u98A8"
+    - "\u30A4\u30EB\u30AB"
+    - "\u3044\u308B\u304B"
+    - "\u30A4\u30EB\u30AB"
+  - question: "\u30A4\u30F3\u30B3"
     answerList:
-    - "\u305F\u3044\u3075\u3046"
-    - "\u30BF\u30A4\u30D5\u30A6"
-    - "\u53F0\u98A8"
-  - question: "\u96F7"
+    - "\u30A4\u30F3\u30B3"
+    - "\u3044\u3093\u3053"
+    - "\u30A4\u30F3\u30B3"
+  - question: "\u30A6\u30B5\u30AE"
     answerList:
-    - "\u304B\u307F\u306A\u308A"
-    - "\u30AB\u30DF\u30CA\u30EA"
-    - "\u96F7"
-  - question: "\u6885\u96E8\u524D\u7DDA"
+    - "\u30A6\u30B5\u30AE"
+    - "\u3046\u3055\u304E"
+    - "\u30A6\u30B5\u30AE"
+  - question: "\u30A6\u30B7"
     answerList:
-    - "\u3070\u3044\u3046\u305C\u3093\u305B\u3093"
-    - "\u30D0\u30A4\u30A6\u30BC\u30F3\u30BB\u30F3"
-    - "\u6885\u96E8\u524D\u7DDA"
-  - question: "\u5098"
+    - "\u30A6\u30B7"
+    - "\u3046\u3057"
+    - "\u30A6\u30B7"
+  - question: "\u30A8\u30D3"
     answerList:
-    - "\u304B\u3055"
-    - "\u30AB\u30B5"
-    - "\u5098"
-  - question: "\u30EC\u30A4\u30F3\u30B3\u30FC\u30C8"
+    - "\u30A8\u30D3"
+    - "\u3048\u3073"
+    - "\u30A8\u30D3"
+  - question: "\u30AA\u30A6\u30E0"
     answerList:
-    - "\u308C\u3044\u3093\u3053\u30FC\u3068"
-    - "\u30EC\u30A4\u30F3\u30B3\u30FC\u30C8"
-    - "\u304B\u3063\u3071"
-  - question: "\u9577\u9774"
+    - "\u30AA\u30A6\u30E0"
+    - "\u304A\u3046\u3080"
+    - "\u30AA\u30A6\u30E0"
+  - question: "\u30AA\u30AA\u30AB\u30DF"
     answerList:
-    - "\u306A\u304C\u3050\u3064"
-    - "\u30CA\u30AC\u30B0\u30C4"
-    - "\u9577\u9774"
-  - question: "\u96E8\u5BBF\u308A"
+    - "\u30AA\u30AA\u30AB\u30DF"
+    - "\u304A\u304A\u304B\u307F"
+    - "\u30AA\u30AA\u30AB\u30DF"
+  - question: "\u30AB"
     answerList:
-    - "\u3042\u307E\u3084\u3069\u308A"
-    - "\u30A2\u30DE\u30E4\u30C9\u30EA"
-    - "\u96E8\u5BBF\u308A"
-  - question: "\u96E8\u4E0A\u304C\u308A"
+    - "\u30AB"
+    - "\u304B"
+    - "\u30AB"
+  - question: "\u30AC"
     answerList:
-    - "\u3042\u3081\u3042\u304C\u308A"
-    - "\u30A2\u30E1\u30A2\u30AC\u30EA"
-    - "\u96E8\u4E0A\u304C\u308A"
-  - question: "\u96E8\u97F3"
-    answerList:
-    - "\u3042\u307E\u304A\u3068"
-    - "\u30A2\u30DE\u30AA\u30C8"
-    - "\u96E8\u97F3"
-  - question: "\u7D2B\u967D\u82B1"
-    answerList:
-    - "\u3042\u3058\u3055\u3044"
-    - "\u30A2\u30B8\u30B5\u30A4"
-    - "\u7D2B\u967D\u82B1"
-  - question: "\u6E7F\u5EA6"
-    answerList:
-    - "\u3057\u3064\u3069"
-    - "\u30B7\u30C4\u30C9"
-    - "\u6E7F\u5EA6"
-  - question: "\u96E8\u6A21\u69D8"
-    answerList:
-    - "\u3042\u307E\u3082\u3088\u3046"
-    - "\u3042\u3081\u3082\u3088\u3046"
-    - "\u96E8\u6A21\u69D8"
-  - question: "\u6563\u6B69"
-    answerList:
-    - "\u3055\u3093\u307D"
-    - "\u304A\u3055\u3093\u307D"
-    - "\u6563\u6B69"
-  - question: "\u8AAD\u66F8"
-    answerList:
-    - "\u3069\u304F\u3057\u3087"
-    - "\u30C9\u30AF\u30B7\u30E7"
-    - "\u8AAD\u66F8"
-  - question: "\u96E8\u5177"
-    answerList:
-    - "\u3042\u307E\u3050"
-    - "\u307C\u3046\u304B\u3093\u304E"
-    - "\u96E8\u5177"
-  - question: "\u30B9\u30BF\u30B8\u30AA\u3057\u307E\u3065"
-    answerList:
-    - "\u3059\u305F\u3058\u304A\u3057\u307E\u3065"
-    - "\u30B9\u30BF\u30B8\u30AA\u3057\u307E\u3065"
-    - "\u3057\u307E\u3065\u3055\u3093"
-  - question: "\u30AB\u30D5\u30A7"
-    answerList:
-    - "\u304B\u3075\u3047"
-    - "\u30AB\u30D5\u30A7"
-    - "\u304D\u3063\u3055\u3066\u3093"
-  - question: "\u6D17\u6FEF\u7269"
-    answerList:
-    - "\u305B\u3093\u305F\u304F\u3082\u306E"
-    - "\u6D17\u6FEF\u7269"
-    - "\u305B\u3093\u305F\u304F"
+    - "\u30AC"
+    - "\u304C"
+    - "\u30AC"
   - question: "\u30AB\u30A8\u30EB"
     answerList:
+    - "\u30AB\u30A8\u30EB"
     - "\u304B\u3048\u308B"
     - "\u30AB\u30A8\u30EB"
-    - "\u86D9"
-  - question: "\u304B\u305F\u3064\u3080\u308A"
+  - question: "\u30AC\u30C1\u30E7\u30A6"
     answerList:
-    - "\u304B\u305F\u3064\u3080\u308A"
-    - "\u30AB\u30BF\u30C4\u30E0\u30EA"
-    - "\u8778\u725B"
-  - question: "\u8679"
+    - "\u30AC\u30C1\u30E7\u30A6"
+    - "\u304C\u3061\u3087\u3046"
+    - "\u30AC\u30C1\u30E7\u30A6"
+  - question: "\u30AB\u30CA\u30EA\u30A2"
     answerList:
-    - "\u306B\u3058"
-    - "\u8679"
-    - "\u30CB\u30B8"
-  - question: "\u3066\u308B\u3066\u308B\u574A\u4E3B"
+    - "\u30AB\u30CA\u30EA\u30A2"
+    - "\u304B\u306A\u308A\u3042"
+    - "\u30AB\u30CA\u30EA\u30A2"
+  - question: "\u30AB\u30CB"
     answerList:
-    - "\u3066\u308B\u3066\u308B\u307C\u3046\u305A"
-    - "\u30C6\u30EB\u30C6\u30EB\u30DC\u30A6\u30BA"
-    - "\u3066\u308B\u3066\u308B\u574A\u4E3B"
-  - question: "\u9664\u6E7F\u5668"
+    - "\u30AB\u30CB"
+    - "\u304B\u306B"
+    - "\u30AB\u30CB"
+  - question: "\u30AB\u30D6\u30C8\u30E0\u30B7"
     answerList:
-    - "\u3058\u3087\u3057\u3064\u304D"
-    - "\u30B8\u30E7\u30B7\u30C4\u30AD"
-    - "\u9664\u6E7F\u5668"
-  - question: "\u6885"
+    - "\u30AB\u30D6\u30C8\u30E0\u30B7"
+    - "\u304B\u3076\u3068\u3080\u3057"
+    - "\u30AB\u30D6\u30C8\u30E0\u30B7"
+  - question: "\u30AB\u30DE\u30AD\u30EA"
     answerList:
-    - "\u6885"
-    - "\u3046\u3081"
-    - "\u3046\u3081\u307C\u3057"
-  - question: "\uFF16\u6708"
+    - "\u30AB\u30DE\u30AD\u30EA"
+    - "\u304B\u307E\u304D\u308A"
+    - "\u30AB\u30DE\u30AD\u30EA"
+  - question: "\u30AB\u30E1"
     answerList:
-    - "\u308D\u304F\u304C\u3064"
-    - "\u516D\u6708"
-    - "\uFF16\u6708"
-  - question: "\u6C34\u305F\u307E\u308A"
+    - "\u30AB\u30E1"
+    - "\u304B\u3081"
+    - "\u30AB\u30E1"
+  - question: "\u30AB\u30E2\u30E1"
     answerList:
-    - "\u307F\u305A\u305F\u307E\u308A"
-    - "\u6C34\u305F\u307E\u308A"
-    - "\u6C34\u6E9C\u307E\u308A"
-  - question: "\u3055\u304F\u3089\u3093\u307C"
+    - "\u30AB\u30E2\u30E1"
+    - "\u304B\u3082\u3081"
+    - "\u30AB\u30E2\u30E1"
+  - question: "\u30AC\u30E9\u30AC\u30E9\u30D8\u30D3"
     answerList:
-    - "\u3055\u304F\u3089\u3093\u307C"
-    - "\u30B5\u30AF\u30E9\u30F3\u30DC"
-    - "\u3061\u3047\u308A\u30FC"
-  - question: "\u30BA\u30C3\u30AD\u30FC\u30CB"
+    - "\u30AC\u30E9\u30AC\u30E9\u30D8\u30D3"
+    - "\u304C\u3089\u304C\u3089\u3078\u3073"
+    - "\u30AC\u30E9\u30AC\u30E9\u30D8\u30D3"
+  - question: "\u30AB\u30E9\u30B9"
     answerList:
-    - "\u305A\u3063\u304D\u30FC\u306B"
-    - "\u30BA\u30C3\u30AD\u30FC\u30CB"
-    - "\u3046\u308A\u304B\u307C\u3061\u3083"
-  - question: "\u304D\u3085\u3046\u308A"
+    - "\u30AB\u30E9\u30B9"
+    - "\u304B\u3089\u3059"
+    - "\u30AB\u30E9\u30B9"
+  - question: "\u30AB\u30F3\u30AC\u30EB\u30FC"
     answerList:
-    - "\u304D\u3085\u3046\u308A"
-    - "\u30AD\u30E5\u30A6\u30EA"
-    - "\u80E1\u74DC"
-  - question: "\u679D\u8C46"
+    - "\u30AB\u30F3\u30AC\u30EB\u30FC"
+    - "\u304B\u3093\u304C\u308B\u30FC"
+    - "\u30AB\u30F3\u30AC\u30EB\u30FC"
+  - question: "\u30AD\u30C4\u30C4\u30AD"
     answerList:
-    - "\u3048\u3060\u307E\u3081"
-    - "\u30A8\u30C0\u30DE\u30E1"
-    - "\u679D\u8C46"
-  - question: "\u30A2\u30B8(\u9B5A)"
+    - "\u30AD\u30C4\u30C4\u30AD"
+    - "\u304D\u3064\u3064\u304D"
+    - "\u30AD\u30C4\u30C4\u30AD"
+  - question: "\u30AD\u30C4\u30CD"
     answerList:
-    - "\u30A2\u30B8"
-    - "\u3042\u3058"
-    - "\u9BF5"
-  - question: "\u30C8\u30DE\u30C8"
+    - "\u30AD\u30C4\u30CD"
+    - "\u304D\u3064\u306D"
+    - "\u30AD\u30C4\u30CD"
+  - question: "\u30AD\u30EA\u30F3"
     answerList:
-    - "\u3068\u307E\u3068"
-    - "\u30C8\u30DE\u30C8"
-    - tomato
-  - question: "\u30A4\u30EF\u30B7"
+    - "\u30AD\u30EA\u30F3"
+    - "\u304D\u308A\u3093"
+    - "\u30AD\u30EA\u30F3"
+  - question: "\u30AF\u30B8\u30E9"
     answerList:
-    - "\u3044\u308F\u3057"
-    - "\u30A4\u30EF\u30B7"
-    - "\u9C2F"
-  - question: "\u30A2\u30E6"
+    - "\u30AF\u30B8\u30E9"
+    - "\u304F\u3058\u3089"
+    - "\u30AF\u30B8\u30E9"
+  - question: "\u30AF\u30DE"
     answerList:
-    - "\u3042\u3086"
-    - "\u30A2\u30E6"
-    - "\u9B8E"
-  - question: "\u30D4\u30FC\u30DE\u30F3"
+    - "\u30AF\u30DE"
+    - "\u304F\u307E"
+    - "\u30AF\u30DE"
+  - question: "\u30AF\u30E9\u30B2"
     answerList:
-    - "\u3074\u30FC\u307E\u3093"
-    - "\u30D4\u30FC\u30DE\u30F3"
-    - "\u3042\u307E\u3068\u3046\u304C\u3089\u3057"
-  - question: "\u30AA\u30AF\u30E9"
+    - "\u30AF\u30E9\u30B2"
+    - "\u304F\u3089\u3052"
+    - "\u30AF\u30E9\u30B2"
+  - question: "\u30AF\u30EF\u30AC\u30BF"
     answerList:
-    - "\u304A\u304F\u3089"
-    - "\u30AA\u30AF\u30E9"
-    - "\u5C0F\u5009"
-  - question: "\u30E1\u30ED\u30F3"
+    - "\u30AF\u30EF\u30AC\u30BF"
+    - "\u304F\u308F\u304C\u305F"
+    - "\u30AF\u30EF\u30AC\u30BF"
+  - question: "\u30B3\u30A2\u30E9"
     answerList:
-    - "\u3081\u308D\u3093"
-    - "\u30E1\u30ED\u30F3"
-    - "\u307E\u304F\u308F\u3046\u308A"
-  - question: "\u30DE\u30F3\u30B4\u30FC"
+    - "\u30B3\u30A2\u30E9"
+    - "\u3053\u3042\u3089"
+    - "\u30B3\u30A2\u30E9"
+  - question: "\u30B3\u30A6\u30E2\u30EA"
     answerList:
-    - "\u307E\u3093\u3054\u30FC"
-    - "\u30DE\u30F3\u30B4\u30FC"
-    - "\u8292\u679C"
-  - question: "\u30CA\u30B9"
+    - "\u30B3\u30A6\u30E2\u30EA"
+    - "\u3053\u3046\u3082\u308A"
+    - "\u30B3\u30A6\u30E2\u30EA"
+  - question: "\u30B3\u30AA\u30ED\u30AE"
     answerList:
-    - "\u306A\u3059"
-    - "\u30CA\u30B9"
-    - "\u306A\u3059\u3073"
-  - question: "\u3068\u3046\u3082\u308D\u3053\u3057"
+    - "\u30B3\u30AA\u30ED\u30AE"
+    - "\u3053\u304A\u308D\u304E"
+    - "\u30B3\u30AA\u30ED\u30AE"
+  - question: "\u30B4\u30EA\u30E9"
     answerList:
-    - "\u3068\u3046\u3082\u308D\u3053\u3057"
-    - "\u30C8\u30A6\u30E2\u30ED\u30B3\u30B7"
-    - "\u3068\u3046\u304D\u3073"
-  - question: "\u86CD"
+    - "\u30B4\u30EA\u30E9"
+    - "\u3054\u308A\u3089"
+    - "\u30B4\u30EA\u30E9"
+  - question: "\u30B5\u30D0\u30F3\u30CA"
     answerList:
-    - "\u307B\u305F\u308B"
-    - "\u30DB\u30BF\u30EB"
-    - "\u86CD"
-  - question: "\u6620\u753B\u9451\u8CDE"
+    - "\u30B5\u30D0\u30F3\u30CA"
+    - "\u3055\u3070\u3093\u306A"
+    - "\u30B5\u30D0\u30F3\u30CA"
+  - question: "\u30B5\u30E1"
     answerList:
-    - "\u3048\u3044\u304C\u304B\u3093\u3057\u3087\u3046"
-    - "\u3048\u3044\u304C"
-    - "\u6620\u753B\u9451\u8CDE"
-  - question: "\u304A\u796D\u308A"
+    - "\u30B5\u30E1"
+    - "\u3055\u3081"
+    - "\u30B5\u30E1"
+  - question: "\u30B5\u30F3\u30B7\u30E7\u30A6\u30A6\u30AA"
     answerList:
-    - "\u304A\u307E\u3064\u308A"
-    - "\u307E\u3064\u308A"
-    - "\u796D\u308A"
-  - question: "\u82B1\u706B"
+    - "\u30B5\u30F3\u30B7\u30E7\u30A6\u30A6\u30AA"
+    - "\u3055\u3093\u3057\u3087\u3046\u3046\u304A"
+    - "\u30B5\u30F3\u30B7\u30E7\u30A6\u30A6\u30AA"
+  - question: "\u30B7\u30AB"
     answerList:
-    - "\u306F\u306A\u3073"
-    - "\u30CF\u30CA\u30D3"
-    - "\u82B1\u706B"
-  - question: Unity
+    - "\u30B7\u30AB"
+    - "\u3057\u304B"
+    - "\u30B7\u30AB"
+  - question: "\u30B8\u30E3\u30F3\u30B0\u30EB"
     answerList:
-    - "\u3086\u306B\u3066\u3043"
-    - "\u30E6\u30CB\u30C6\u30A3"
-    - Unity
-  - question: "\u30B2\u30FC\u30E0"
+    - "\u30B8\u30E3\u30F3\u30B0\u30EB"
+    - "\u3058\u3083\u3093\u3050\u308B"
+    - "\u30B8\u30E3\u30F3\u30B0\u30EB"
+  - question: "\u30B9\u30BA\u30E1"
     answerList:
-    - "\u3052\u30FC\u3080"
-    - "\u30B2\u30FC\u30E0"
-    - Game
+    - "\u30B9\u30BA\u30E1"
+    - "\u3059\u305A\u3081"
+    - "\u30B9\u30BA\u30E1"
+  - question: "\u30BE\u30A6"
+    answerList:
+    - "\u30BE\u30A6"
+    - "\u305E\u3046"
+    - "\u30BE\u30A6"
+  - question: "\u30BF\u30AB"
+    answerList:
+    - "\u30BF\u30AB"
+    - "\u305F\u304B"
+    - "\u30BF\u30AB"
+  - question: "\u30BF\u30B3"
+    answerList:
+    - "\u30BF\u30B3"
+    - "\u305F\u3053"
+    - "\u30BF\u30B3"
+  - question: "\u30C0\u30C1\u30E7\u30A6"
+    answerList:
+    - "\u30C0\u30C1\u30E7\u30A6"
+    - "\u3060\u3061\u3087\u3046"
+    - "\u30C0\u30C1\u30E7\u30A6"
+  - question: "\u30C1\u30E7\u30A6"
+    answerList:
+    - "\u30C1\u30E7\u30A6"
+    - "\u3061\u3087\u3046"
+    - "\u30C1\u30E7\u30A6"
+  - question: "\u30C6\u30F3\u30C8\u30A6\u30E0\u30B7"
+    answerList:
+    - "\u30C6\u30F3\u30C8\u30A6\u30E0\u30B7"
+    - "\u3066\u3093\u3068\u3046\u3080\u3057"
+    - "\u30C6\u30F3\u30C8\u30A6\u30E0\u30B7"
+  - question: "\u30C8\u30AB\u30B2"
+    answerList:
+    - "\u30C8\u30AB\u30B2"
+    - "\u3068\u304B\u3052"
+    - "\u30C8\u30AB\u30B2"
+  - question: "\u30C8\u30CA\u30AB\u30A4"
+    answerList:
+    - "\u30C8\u30CA\u30AB\u30A4"
+    - "\u3068\u306A\u304B\u3044"
+    - "\u30C8\u30CA\u30AB\u30A4"
+  - question: "\u30C8\u30E9"
+    answerList:
+    - "\u30C8\u30E9"
+    - "\u3068\u3089"
+    - "\u30C8\u30E9"
+  - question: "\u30C9\u30E9\u30B4\u30F3"
+    answerList:
+    - "\u30C9\u30E9\u30B4\u30F3"
+    - "\u3069\u3089\u3054\u3093"
+    - "\u30C9\u30E9\u30B4\u30F3"
+  - question: "\u30C9\u30E9\u30B4\u30F3\u30DC\u30FC\u30EB"
+    answerList:
+    - "\u30C9\u30E9\u30B4\u30F3\u30DC\u30FC\u30EB"
+    - "\u3069\u3089\u3054\u3093\u307C\u30FC\u308B"
+    - "\u30C9\u30E9\u30B4\u30F3\u30DC\u30FC\u30EB"
+  - question: "\u30C8\u30F3\u30DC"
+    answerList:
+    - "\u30C8\u30F3\u30DC"
+    - "\u3068\u3093\u307C"
+    - "\u30C8\u30F3\u30DC"
+  - question: "\u30CB\u30EF\u30C8\u30EA"
+    answerList:
+    - "\u30CB\u30EF\u30C8\u30EA"
+    - "\u306B\u308F\u3068\u308A"
+    - "\u30CB\u30EF\u30C8\u30EA"
+  - question: "\u30CD\u30BA\u30DF"
+    answerList:
+    - "\u30CD\u30BA\u30DF"
+    - "\u306D\u305A\u307F"
+    - "\u30CD\u30BA\u30DF"
+  - question: "\u30CF\u30A8"
+    answerList:
+    - "\u30CF\u30A8"
+    - "\u306F\u3048"
+    - "\u30CF\u30A8"
+  - question: "\u30D0\u30C3\u30BF"
+    answerList:
+    - "\u30D0\u30C3\u30BF"
+    - "\u3070\u3063\u305F"
+    - "\u30D0\u30C3\u30BF"
+  - question: "\u30CF\u30C8"
+    answerList:
+    - "\u30CF\u30C8"
+    - "\u306F\u3068"
+    - "\u30CF\u30C8"
+  - question: "\u30CF\u30E0\u30B9\u30BF\u30FC"
+    answerList:
+    - "\u30CF\u30E0\u30B9\u30BF\u30FC"
+    - "\u306F\u3080\u3059\u305F\u30FC"
+    - "\u30CF\u30E0\u30B9\u30BF\u30FC"
+  - question: "\u30CF\u30E4\u30D6\u30B5"
+    answerList:
+    - "\u30CF\u30E4\u30D6\u30B5"
+    - "\u306F\u3084\u3076\u3055"
+    - "\u30CF\u30E4\u30D6\u30B5"
+  - question: "\u30CF\u30EA\u30CD\u30BA\u30DF"
+    answerList:
+    - "\u30CF\u30EA\u30CD\u30BA\u30DF"
+    - "\u306F\u308A\u306D\u305A\u307F"
+    - "\u30CF\u30EA\u30CD\u30BA\u30DF"
+  - question: "\u30D1\u30F3\u30C0"
+    answerList:
+    - "\u30D1\u30F3\u30C0"
+    - "\u3071\u3093\u3060"
+    - "\u30D1\u30F3\u30C0"
+  - question: "\u30D2\u30C4\u30B8"
+    answerList:
+    - "\u30D2\u30C4\u30B8"
+    - "\u3072\u3064\u3058"
+    - "\u30D2\u30C4\u30B8"
+  - question: "\u30D2\u30C8\u30C7"
+    answerList:
+    - "\u30D2\u30C8\u30C7"
+    - "\u3072\u3068\u3067"
+    - "\u30D2\u30C8\u30C7"
+  - question: "\u30D5\u30AF\u30ED\u30A6"
+    answerList:
+    - "\u30D5\u30AF\u30ED\u30A6"
+    - "\u3075\u304F\u308D\u3046"
+    - "\u30D5\u30AF\u30ED\u30A6"
+  - question: "\u30D6\u30BF"
+    answerList:
+    - "\u30D6\u30BF"
+    - "\u3076\u305F"
+    - "\u30D6\u30BF"
+  - question: "\u30D5\u30E9\u30DF\u30F3\u30B4"
+    answerList:
+    - "\u30D5\u30E9\u30DF\u30F3\u30B4"
+    - "\u3075\u3089\u307F\u3093\u3054"
+    - "\u30D5\u30E9\u30DF\u30F3\u30B4"
+  - question: "\u30D8\u30D3"
+    answerList:
+    - "\u30D8\u30D3"
+    - "\u3078\u3073"
+    - "\u30D8\u30D3"
+  - question: "\u30DA\u30EA\u30AB\u30F3"
+    answerList:
+    - "\u30DA\u30EA\u30AB\u30F3"
+    - "\u307A\u308A\u304B\u3093"
+    - "\u30DA\u30EA\u30AB\u30F3"
+  - question: "\u30DA\u30F3\u30AE\u30F3"
+    answerList:
+    - "\u30DA\u30F3\u30AE\u30F3"
+    - "\u307A\u3093\u304E\u3093"
+    - "\u30DA\u30F3\u30AE\u30F3"
+  - question: "\u30DF\u30C4\u30D0\u30C1"
+    answerList:
+    - "\u30DF\u30C4\u30D0\u30C1"
+    - "\u307F\u3064\u3070\u3061"
+    - "\u30DF\u30C4\u30D0\u30C1"
+  - question: "\u30E2\u30B0\u30E9"
+    answerList:
+    - "\u30E2\u30B0\u30E9"
+    - "\u3082\u3050\u3089"
+    - "\u30E2\u30B0\u30E9"
+  - question: "\u30E4\u30AE"
+    answerList:
+    - "\u30E4\u30AE"
+    - "\u3084\u304E"
+    - "\u30E4\u30AE"
+  - question: "\u591C\u884C\u30D0\u30B9"
+    answerList:
+    - "\u591C\u884C\u30D0\u30B9"
+    - "\u3084\u3053\u3046\u3070\u3059"
+    - "\u30E4\u30B3\u30A6\u30D0\u30B9"
+  - question: "\u30E9\u30A4\u30AA\u30F3"
+    answerList:
+    - "\u30E9\u30A4\u30AA\u30F3"
+    - "\u3089\u3044\u304A\u3093"
+    - "\u30E9\u30A4\u30AA\u30F3"
+  - question: "\u30E9\u30AF\u30C0"
+    answerList:
+    - "\u30E9\u30AF\u30C0"
+    - "\u3089\u304F\u3060"
+    - "\u30E9\u30AF\u30C0"
+  - question: "\u30EA\u30B9"
+    answerList:
+    - "\u30EA\u30B9"
+    - "\u308A\u3059"
+    - "\u30EA\u30B9"
+  - question: "\u30ED\u30B1\u30C3\u30C8"
+    answerList:
+    - "\u30ED\u30B1\u30C3\u30C8"
+    - "\u308D\u3051\u3063\u3068"
+    - "\u30ED\u30B1\u30C3\u30C8"
+  - question: "\u30ED\u30D0"
+    answerList:
+    - "\u30ED\u30D0"
+    - "\u308D\u3070"
+    - "\u30ED\u30D0"
+  - question: "\u30EF\u30B7"
+    answerList:
+    - "\u30EF\u30B7"
+    - "\u308F\u3057"
+    - "\u30EF\u30B7"
+  - question: "\u30EF\u30CB"
+    answerList:
+    - "\u30EF\u30CB"
+    - "\u308F\u306B"
+    - "\u30EF\u30CB"
+  - question: "\u5B87\u5B99"
+    answerList:
+    - "\u5B87\u5B99"
+    - "\u3046\u3061\u3085\u3046"
+    - "\u30A6\u30C1\u30E5\u30A6"
+  - question: "\u5B87\u5B99\u8239"
+    answerList:
+    - "\u5B87\u5B99\u8239"
+    - "\u3046\u3061\u3085\u3046\u305B\u3093"
+    - "\u30A6\u30C1\u30E5\u30A6\u30BB\u30F3"
+  - question: "\u5B87\u5B99\u98DB\u884C\u58EB"
+    answerList:
+    - "\u5B87\u5B99\u98DB\u884C\u58EB"
+    - "\u3046\u3061\u3085\u3046\u3072\u3053\u3046\u3057"
+    - "\u30A6\u30C1\u30E5\u30A6\u30D2\u30B3\u30A6\u30B7"
+  - question: "\u733F"
+    answerList:
+    - "\u733F"
+    - "\u3055\u308B"
+    - "\u30B5\u30EB"
+  - question: "\u6D77\u8CCA\u8239"
+    answerList:
+    - "\u6D77\u8CCA\u8239"
+    - "\u304B\u3044\u305E\u304F\u305B\u3093"
+    - "\u30AB\u30A4\u30BE\u30AF\u30BB\u30F3"
+  - question: "\u6D77\u5E95"
+    answerList:
+    - "\u6D77\u5E95"
+    - "\u304B\u3044\u3066\u3044"
+    - "\u30AB\u30A4\u30C6\u30A4"
+  - question: "\u6D77\u5E95\u706B\u5C71"
+    answerList:
+    - "\u6D77\u5E95\u706B\u5C71"
+    - "\u304B\u3044\u3066\u3044\u304B\u3056\u3093"
+    - "\u30AB\u30A4\u30C6\u30A4\u30AB\u30B6\u30F3"
+  - question: "\u9A0E\u58EB"
+    answerList:
+    - "\u9A0E\u58EB"
+    - "\u304D\u3057"
+    - "\u30AD\u30B7"
+  - question: "\u9B5A"
+    answerList:
+    - "\u9B5A"
+    - "\u3055\u304B\u306A"
+    - "\u30B5\u30AB\u30CA"
+  - question: "\u72AC"
+    answerList:
+    - "\u72AC"
+    - "\u3044\u306C"
+    - "\u30A4\u30CC"
+  - question: "\u8C61"
+    answerList:
+    - "\u8C61"
+    - "\u305E\u3046"
+    - "\u30BE\u30A6"
+  - question: "\u661F\u5EA7"
+    answerList:
+    - "\u661F\u5EA7"
+    - "\u305B\u3044\u3056"
+    - "\u30BB\u30A4\u30B6"
+  - question: "\u9CE5"
+    answerList:
+    - "\u9CE5"
+    - "\u3068\u308A"
+    - "\u30C8\u30EA"
+  - question: "\u7530\u820E"
+    answerList:
+    - "\u7530\u820E"
+    - "\u3044\u306A\u304B"
+    - "\u30A4\u30CA\u30AB"
+  - question: "\u90FD\u5E02"
+    answerList:
+    - "\u90FD\u5E02"
+    - "\u3068\u3057"
+    - "\u30C8\u30B7"
+  - question: "\u732B"
+    answerList:
+    - "\u732B"
+    - "\u306D\u3053"
+    - "\u30CD\u30B3"
+  - question: "\u99AC"
+    answerList:
+    - "\u99AC"
+    - "\u3046\u307E"
+    - "\u30A6\u30DE"
+  - question: "\u5BCC\u58EB\u5C71"
+    answerList:
+    - "\u5BCC\u58EB\u5C71"
+    - "\u3075\u3058\u3055\u3093"
+    - "\u30D5\u30B8\u30B5\u30F3"
+  - question: "\u9B54\u6CD5\u4F7F\u3044"
+    answerList:
+    - "\u9B54\u6CD5\u4F7F\u3044"
+    - "\u307E\u307B\u3046\u3064\u304B\u3044"
+    - "\u30DE\u30DB\u30A6\u30C4\u30AB\u30A4"
+  - question: "\u60D1\u661F"
+    answerList:
+    - "\u60D1\u661F"
+    - "\u308F\u304F\u305B\u3044"
+    - "\u30EF\u30AF\u30BB\u30A4"
 --- !u!4 &1250044290
 Transform:
   m_ObjectHideFlags: 0
@@ -10905,7 +11153,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 911527005}
         m_TargetAssemblyTypeName: CooperateGameManager, Assembly-CSharp
-        m_MethodName: RestartGame
+        m_MethodName: OnClickRestartGame
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
