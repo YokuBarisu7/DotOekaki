@@ -23,12 +23,12 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/Eshiritori.unity
     guid: 53413ac89fe1abd4daccaab1ceb0b9fe
-  - enabled: 1
+  - enabled: 0
     path: Assets/Scenes/Yonkoma.unity
     guid: 4fdb7f052028b844d820ec33aca53af5
   - enabled: 1
     path: Assets/Scenes/Dengon.unity
-    guid: 95c7b7fde46e50d41a6e8fea21688ef5
+    guid: 4624b6811c296f74f9227fed32efdb53
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}
   m_UseUCBPForAssetBundles: 0

@@ -46,9 +46,9 @@ public class UIManager : MonoBehaviourPunCallbacks
     // 絵しりとりモード
     [SerializeField] Button shiritoriStartButton;
     [SerializeField] InputField shiritoriTimeInputField;
-    [SerializeField] InputField shiritoriAnswerTimeInputField;
+    //[SerializeField] InputField shiritoriAnswerTimeInputField;
     [SerializeField] int shiritoriTime;
-    [SerializeField] int shiritoriAnswerTime;
+    //[SerializeField] int shiritoriAnswerTime;
     private bool isErrorShiritoriTime;
     private bool isErrorShiritoriAnswerTime;
 
@@ -112,7 +112,7 @@ public class UIManager : MonoBehaviourPunCallbacks
         BindIntInput(cooperateTimeInputField, cooperateTime, OnCooperateTimeInputValueChanged, ValidateCooperateTimeInput);
 
         BindIntInput(shiritoriTimeInputField, shiritoriTime, OnShiritoriTimeInputValueChanged, ValidateShiritoriTimeInput);
-        BindIntInput(shiritoriAnswerTimeInputField, shiritoriAnswerTime, OnShiritoriAnswerTimeInputValueChanged, ValidateShiritoriAnswerTimeInput);
+        //BindIntInput(shiritoriAnswerTimeInputField, shiritoriAnswerTime, OnShiritoriAnswerTimeInputValueChanged, ValidateShiritoriAnswerTimeInput);
 
         BindIntInput(dengonTimeInputField, dengonTime, OnDengonTimeInputValueChanged, ValidateDengonTimeInput);
         BindIntInput(dengonAnswerTimeInputField, dengonAnswerTime, OnDengonAnswerTimeInputValueChanged, ValidateDengonAnswerTimeInput);
@@ -372,7 +372,8 @@ public class UIManager : MonoBehaviourPunCallbacks
         if (PhotonNetwork.InRoom)
         {
             PlayerPrefs.SetInt("ShiritoriTime", shiritoriTime);
-            PlayerPrefs.SetInt("ShiritoriAnswerTime", shiritoriAnswerTime);
+
+            PlayerPrefs.Save();
             StartSceneForAll("Eshiritori");
         }
         else
@@ -387,6 +388,8 @@ public class UIManager : MonoBehaviourPunCallbacks
         {
             PlayerPrefs.SetInt("DengonTime", dengonTime);
             PlayerPrefs.SetInt("DengonAnswerTime", dengonAnswerTime);
+
+            PlayerPrefs.Save();
             StartSceneForAll("Dengon");
         }
         else
@@ -502,20 +505,20 @@ public class UIManager : MonoBehaviourPunCallbacks
     {
         ForceDigitsOrZero(shiritoriTimeInputField, input);
     }
-    private void ValidateShiritoriAnswerTimeInput(string input)
-    {
-        ForceDigitsOrZero(shiritoriAnswerTimeInputField, input);
-    }
+    //private void ValidateShiritoriAnswerTimeInput(string input)
+    //{
+    //    ForceDigitsOrZero(shiritoriAnswerTimeInputField, input);
+    //}
     private void OnShiritoriTimeInputValueChanged(string input)
     {
         ApplyIntRange(input, 10, 999, ref shiritoriTime, ref isErrorShiritoriTime);
         shiritoriStartButton.interactable = !isErrorShiritoriTime && !isErrorShiritoriAnswerTime;
     }
-    private void OnShiritoriAnswerTimeInputValueChanged(string input)
-    {
-        ApplyIntRange(input, 10, 300, ref shiritoriAnswerTime, ref isErrorShiritoriAnswerTime);
-        shiritoriStartButton.interactable = !isErrorShiritoriTime && !isErrorShiritoriAnswerTime;
-    }
+    //private void OnShiritoriAnswerTimeInputValueChanged(string input)
+    //{
+    //    ApplyIntRange(input, 10, 300, ref shiritoriAnswerTime, ref isErrorShiritoriAnswerTime);
+    //    shiritoriStartButton.interactable = !isErrorShiritoriTime && !isErrorShiritoriAnswerTime;
+    //}
 
 
     // 伝言ゲームモード
@@ -529,7 +532,7 @@ public class UIManager : MonoBehaviourPunCallbacks
     }
     private void OnDengonTimeInputValueChanged(string input)
     {
-        ApplyIntRange(input, 10, 999, ref dengonTime, ref isErrorDengonTime);
+        ApplyIntRange(input, 10, 300, ref dengonTime, ref isErrorDengonTime);
         dengonStartButton.interactable = !isErrorDengonTime && !isErrorDengonAnswerTime;
     }
     private void OnDengonAnswerTimeInputValueChanged(string input)

@@ -1,48 +1,36 @@
-using System;
 using UnityEngine;
 using UnityEngine.UI;
 
 public class ImageView : MonoBehaviour
 {
-    [SerializeField] RawImage image;
-    [SerializeField] Text text;
-    [SerializeField] GameObject arrow;
-    [SerializeField] GameObject marubatsu;
-    [SerializeField] Text displayText;
+    [SerializeField] RawImage rawImage;
+    [SerializeField] Text answerText;
+    [SerializeField] Text playerNameText;
+    [SerializeField] Image marubatsu;
 
-    public void Set(Texture texture, string label, bool isArrowActive)
+    [SerializeField] Sprite maruSprite;
+    [SerializeField] Sprite batsuSprite;
+
+    public void Set(Texture texture)
     {
-        image.texture = texture;
-        text.text = label;
-        arrow.SetActive(isArrowActive);
-        marubatsu.SetActive(false);
-        displayText.gameObject.SetActive(false);
+        rawImage.texture = texture;
+        marubatsu.gameObject.SetActive(false);
     }
 
-    public void SetText(string text)
+    public void SetText(string answer, string playerName)
     {
-        this.text.text = text;
+        answerText.text = answer;
+        playerNameText.text = playerName;
     }
 
-    public void SetMaru()
+    public void SetAnswerText(string answer)
     {
-        marubatsu.SetActive(true);
-        marubatsu.GetComponent<Image>().sprite = Resources.Load<Sprite>("images/Circle");
+        answerText.text = answer;
     }
 
-    public void SetBatsu()
+    public void SetMaruBatsu(bool isMaru)
     {
-        marubatsu.SetActive(true);
-        marubatsu.GetComponent<Image>().sprite = Resources.Load<Sprite>("images/batsu");
-    }
-
-    public void SetHiragana(string hiragana, bool isArrowActive)
-    {
-        image.gameObject.SetActive(false);
-        text.gameObject.SetActive(false);
-        arrow.SetActive(isArrowActive);
-        marubatsu.SetActive(false);
-        displayText.gameObject.SetActive(true);
-        displayText.text = hiragana;
+        marubatsu.gameObject.SetActive(true);
+        marubatsu.sprite = isMaru ? maruSprite : batsuSprite;
     }
 }

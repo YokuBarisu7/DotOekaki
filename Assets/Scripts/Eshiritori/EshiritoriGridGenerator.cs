@@ -1,21 +1,17 @@
 using UnityEngine;
 using UnityEngine.UI;
-using Photon.Pun;
 
-public class DengonShowPanelManager : MonoBehaviourPun
+public class EshiritoriGridGenerator : MonoBehaviour
 {
-    [SerializeField] GameObject showField;
-    [SerializeField] RawImage showingPanel;
-
-    [SerializeField] Text fromText;
-    [SerializeField] Text toText;
-
     [SerializeField] RawImage gridPanel;
     [SerializeField] Toggle gridToggle;
 
-    int cols;
-    int rows;
-    float thicknessPx = 0.5f;
+    [Header("グリッドの細かさ(縦×横)")]
+    [SerializeField] int cols;
+    [SerializeField] int rows;
+
+    [Header("グリッド線の太さ")]
+    [SerializeField] float thicknessPx;
 
     static readonly int RectSizeID = Shader.PropertyToID("_RectSize");
     static readonly int GridCountID = Shader.PropertyToID("_GridCount");
@@ -23,7 +19,6 @@ public class DengonShowPanelManager : MonoBehaviourPun
     static readonly int EnabledID = Shader.PropertyToID("_GridEnabled");
 
     Material runtimeMat;
-
 
     private void Start()
     {
@@ -41,43 +36,13 @@ public class DengonShowPanelManager : MonoBehaviourPun
             SetEnabled(false);
         }
         ApplyParams();
+
+        EshiritoriDrawingManager.instance.OnFieldSizeChanged += SetGridCount;
     }
 
     private void OnDestroy()
     {
         if (runtimeMat != null) Destroy(runtimeMat);
-    }
-
-    public void SetShowPanel(Texture texture)
-    {
-        showingPanel.texture = texture;
-        SetShowFieldSize(texture.width, texture.height);
-        SetGridCount(texture.width, texture.height);
-    }
-
-    public void SetFromText(string text)
-    {
-        fromText.text = text;
-    }
-
-    public void SetToText(string text)
-    {
-        toText.text = text;
-    }
-
-    private void SetShowFieldSize(int width, int height)
-    {
-        RectTransform rectTransform = showField.GetComponent<RectTransform>();
-        float aspectRatio = (float)width / height;
-
-        if (aspectRatio > 1)
-        {
-            rectTransform.sizeDelta = new Vector2(800, 800 / aspectRatio);
-        }
-        else
-        {
-            rectTransform.sizeDelta = new Vector2(800 * aspectRatio, 800);
-        }
     }
 
     private void OnToggle(bool on)
@@ -95,6 +60,7 @@ public class DengonShowPanelManager : MonoBehaviourPun
         runtimeMat.SetFloat(EnabledID, on ? 1f : 0f);
     }
 
+    // ドット数変更時に呼ばれる
     public void SetGridCount(int newCols, int newRows)
     {
         cols = Mathf.Max(1, newCols);

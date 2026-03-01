@@ -4,86 +4,156 @@ using UnityEngine.UI;
 
 public class ImagePanelController : MonoBehaviour
 {
-    [SerializeField] GameObject imagePanel;
+    [SerializeField] Text firstCharacter;
+    [SerializeField] Text lastCharacter;
+    [SerializeField] Text resultText;
+
+    [SerializeField] Transform parent;
+    [SerializeField] Transform lastObj;
+    [SerializeField] GameObject imageViewPrefab;
+
+    [SerializeField] Sprite maruSprite;
+    [SerializeField] Sprite batsuSprite;
+    [SerializeField] Image marubatsu;
+
     private List<ImageView> imageViews = new List<ImageView>();
 
-    public void CreateNewImage(Texture texture)
+    static readonly char[] chars =
     {
-        ImageView prefab = Resources.Load<ImageView>("Prefabs/Element");
-        ImageView element = Instantiate(prefab, imagePanel.transform);
-        texture.filterMode = FilterMode.Point;
-        bool isFirst = imageViews.Count == 0;
-        element.Set(texture, "", !isFirst);
-        imageViews.Add(element);
+        'あ','い','う','え','お',
+        'か','き','く','け','こ',
+        'が','ぎ','ぐ','げ','ご',
+        'さ','し','す','せ','そ',
+        'ざ','じ','ず','ぜ','ぞ',
+        'た','ち','つ','て','と',
+        'だ','ぢ','づ','で','ど',
+        'な','に','ぬ','ね','の',
+        'は','ひ','ふ','へ','ほ',
+        'ば','び','ぶ','べ','ぼ',
+        'ぱ','ぴ','ぷ','ぺ','ぽ',
+        'ま','み','む','め','も',
+        'や','ゆ','よ',
+        'ら','り','る','れ','ろ',
+        'わ'
+    };
+
+    public char GetRandomHiragana()
+    { 
+        return chars[Random.Range(0, chars.Length)];
     }
 
-    public void CreateHiragana(string hiragana, bool isArrowActive)
+    public void SetHiragana(string hiragana1, string hiragana2)
     {
-        ImageView prefab = Resources.Load<ImageView>("Prefabs/Element");
-        ImageView element = Instantiate(prefab, imagePanel.transform);
-        element.SetHiragana(hiragana, isArrowActive);
-        imageViews.Add(element);
+        firstCharacter.text = hiragana1;
+        lastCharacter.text = hiragana2;
     }
 
-    public void SetText(string text, int index)
+    public void CreateNewImageView()
+    {
+        var prefab = Instantiate(imageViewPrefab, parent.transform);
+
+        int lastIndex = lastObj.GetSiblingIndex();
+        prefab.transform.SetSiblingIndex(lastIndex);
+
+        var imageView = prefab.GetComponent<ImageView>();
+        imageView.SetText("", "");
+        imageViews.Add(imageView);
+    }
+
+    public void SetText(string answer, string playerName, int index)
     {
         if (index < 0 || index >= imageViews.Count) return;
-        imageViews[index].SetText(text);
+        imageViews[index].SetText(answer, playerName);
     }
 
-    public void SetTexture(Texture texture, int index)
+    public void SetTexture(Texture2D texture, int index)
     {
-        if (index < 0 || index >= imageViews.Count) return;
-        texture.filterMode = FilterMode.Point;
-        imageViews[index].Set(texture, "", true);
+        if (index <= 0 || index > imageViews.Count) return;
+        imageViews[index - 1].Set(texture);
     }
 
+    // 最後の結果発表
     public void DisplayResult(List<string> texts)
     {
         //textsの中身を確認
         Debug.Log("texts: " + string.Join(", ", texts));
-        //正誤判定
-        List<bool> isCorrects = new List<bool>();
-        for (int i = 0; i < texts.Count; i++)
-        {
-            if (i == 0)
-            {
-                continue;
-            }
-            else
-            {
-                // 2番目以降の要素は、前の要素と比較して正誤を判定
-                // 前の要素の最後の文字と現在の要素の最初の文字が一致するかどうか
-                char lastChar = texts[i - 1][texts[i - 1].Length - 1];
-                char firstChar = texts[i][0];
-                if (lastChar == firstChar)
-                {
-                    isCorrects.Add(true);
-                }
-                else
-                {
-                    isCorrects.Add(false);
-                }
-            }
-        }
-        //正誤判定の結果をログに出力
-        Debug.Log("isCorrects: " + string.Join(", ", isCorrects));
 
+        int n = imageViews.Count;
+        List<bool> isCorrects = JudgeChain(texts);
+
+        for (int i = 0; i < n; i++)
+        { 
+            var v = imageViews[i];
+
+            string answer = texts[i + 1];
+            v.SetAnswerText(answer); // 伏字の解除
+            v.SetMaruBatsu(isCorrects[i]);
+        }
+
+        bool isCorrect = isCorrects.Count > n ? isCorrects[n] : false;
+        SetMaruBatsu(isCorrect);
+        resultText.gameObject.SetActive(true);
+        ShowAccuracy(isCorrects);
+    }
+
+    // 正誤判定
+    private List<bool> JudgeChain(List<string> texts) 
+    {
+        var results = new List<bool>(Mathf.Max(0, texts.Count - 1));
         for (int i = 1; i < texts.Count; i++)
         {
-            ImageView imageView = imageViews[i];
-            //伏字の解除
-            imageView.SetText(texts[i]);
-            //二番目以降のimageViewについてマルバツをつける
-            //imageView.SetMaru();?
-            if (isCorrects[i - 1])
+            string prev = texts[i - 1];
+            string cur = texts[i];
+
+            // 空欄が絡んだら問答無用で×
+            if (string.IsNullOrEmpty(prev) || string.IsNullOrEmpty(cur))
             {
-                imageView.SetMaru();
+                results.Add(false);
+                continue;
             }
+
+            char prevLast = ShiritoriKana.GetTail(prev);
+            char curFirst = ShiritoriKana.GetHead(cur);
+
+            if (prevLast == '\0' || curFirst == '\0') { results.Add(false); }
             else
             {
-                imageView.SetBatsu();
+                results.Add(prevLast == curFirst);
             }
         }
+        return results;
+    }
+
+    private void ShowAccuracy(List<bool> results) 
+    {
+        int total = results.Count;
+        if (total == 0)
+        {
+            resultText.text = "正解率：0%（ 0/0 ）";
+        }
+
+        int correct = 0;
+        for (int i = 0; i < total; i++)
+        {
+            if (results[i]) correct++;
+        }
+
+        float percent = (float)correct / total * 100f;
+        resultText.text = $"正解率：{percent:0.#}% ({correct}/{total})";
+    }
+
+    private void SetMaruBatsu(bool isMaru)
+    {
+        marubatsu.gameObject.SetActive(true);
+        marubatsu.sprite = isMaru ? maruSprite : batsuSprite;
+    }
+
+    public void ClearAllImageView()
+    { 
+        foreach (var v in  imageViews) 
+        {
+            if (v != null) Destroy(v.gameObject);
+        }
+        imageViews.Clear();
     }
 }

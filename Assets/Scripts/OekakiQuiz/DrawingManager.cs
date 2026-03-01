@@ -186,7 +186,6 @@ public class DrawingManager : MonoBehaviourPunCallbacks
             }
             else
             {
-                // 将来的には DrawAtPixel(p) 推奨
                 DrawAtPixel(p);
             }
         }

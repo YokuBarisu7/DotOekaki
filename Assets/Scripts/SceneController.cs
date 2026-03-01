@@ -26,7 +26,14 @@ public class SceneController : MonoBehaviour
 
     private IEnumerator LoadSceneAsync(string sceneName)
     {
-        AsyncOperation asyncLoad = SceneManager.LoadSceneAsync(sceneName);
+        var asyncLoad = SceneManager.LoadSceneAsync(sceneName);
+
+        if (asyncLoad == null)
+        {
+            Debug.LogError($"LoadSceneAsync failed (null). sceneName={sceneName}. Check Build Settings / name.");
+            yield break;
+        }
+
         while (!asyncLoad.isDone)
         {
             yield return null;

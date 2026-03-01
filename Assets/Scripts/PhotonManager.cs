@@ -16,6 +16,7 @@ public class PhotonManager : MonoBehaviourPunCallbacks
     private LeaveDestination leaveDest = LeaveDestination.None;
 
     private bool IsInTitleScene => SceneManager.GetActiveScene().name == "Title";
+    private bool isLeaving = false;
 
     private void Awake()
     {
@@ -95,15 +96,23 @@ public class PhotonManager : MonoBehaviourPunCallbacks
     public void LeaveRoomToTitleScene()
     {
         Debug.Log("ルームから退出します（Titleシーンへ）。");
-        leaveDest = LeaveDestination.TitleScene;
 
-        // Masterはついでに閉じる（ベストエフォート）
+        // Masterはついでに部屋を閉じる
         if (PhotonNetwork.IsMasterClient && PhotonNetwork.CurrentRoom != null)
         {
             PhotonNetwork.CurrentRoom.IsOpen = false;
             PhotonNetwork.CurrentRoom.IsVisible = false;
         }
 
+        BeginLeave(LeaveDestination.TitleScene);
+    }
+
+    private void BeginLeave(LeaveDestination dest)
+    {
+        if (isLeaving) return;
+        isLeaving = true;
+
+        leaveDest = dest;
         PhotonNetwork.LeaveRoom();
     }
 
@@ -138,11 +147,19 @@ public class PhotonManager : MonoBehaviourPunCallbacks
 
             case LeaveDestination.TitleScene:
             default:
-                SceneController.instance.LoadScene("Title");
+                if (SceneController.instance != null)
+                {
+                    SceneController.instance.LoadScene("Title");
+                }
+                else
+                {
+                    SceneManager.LoadScene("Title");
+                }
                 Destroy(gameObject);
                 break;
         }
         leaveDest = LeaveDestination.None;
+        isLeaving = false;
     }
 
     // === 接続失敗時に呼ばれるコールバック ===

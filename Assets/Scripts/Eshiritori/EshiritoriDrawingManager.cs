@@ -2,41 +2,60 @@ using UnityEngine;
 using UnityEngine.UI;
 using System.Collections.Generic;
 using Photon.Pun;
+using System;
 
 public class EshiritoriDrawingManager : MonoBehaviourPunCallbacks
 {
     public static EshiritoriDrawingManager instance;
 
-    public Texture2D texture;
+
     [SerializeField] GameObject drawField;
     [SerializeField] RawImage drawingPanel;
-    public int CanvasWidth; // キャンバスの横幅
-    public int CanvasHeight; // キャンバスの縦幅
-    public Color drawColor; // ペンの色
-    public int brushSize; // ブラシの大きさ
-    Vector2Int? lastPoint = null; // 前回の描画位置
-    Stack<Color[]> undoStack; // 元に戻すためのスタック
-    Stack<Color[]> redoStack; // やり直しのためのスタック
+    [SerializeField] int initialWidth;
+    [SerializeField] int initialHeight;
+    [SerializeField] Color drawColor;
+    [SerializeField] int brushSize;
+
+    public Texture2D texture;
+    public int CanvasWidth { get; private set; }
+    public int CanvasHeight { get; private set; }
+    public Color DrawColor => drawColor;
+    public int BrushSize => brushSize;
+    public ToolMode currentMode { get; private set; } = ToolMode.Pen;
+    public int undoStackCount { get { return undoStack.Count; } }
+    public int redoStackCount { get { return redoStack.Count; } }
+    public bool IsDrawable => isDrawable;
+    public bool HasDrawingCached => hasDrawing;
+
+    Color32[] clearBuffer; // ClearCanvasで使用
+    Stack<Color32[]> undoStack; // 元に戻すためのスタック
+    Stack<Color32[]> redoStack; // やり直しのためのスタック
     Vector2Int? startPoint = null; // 直線モードの始点
     Vector2Int startPixel; // 円モード、長方形モードの始点
     bool isDrawing = false; // 描画中かどうか
-    public bool isDrawable = false; // 描画可能かどうか
+    bool isDrawable = false; // 描画可能かどうか
+    bool hasDrawing = false; // 何か描かれているかどうか
     DrawingUtils drawer;
-    int size = 800; // 描画領域のサイズ
+
+    Dictionary<int, Vector2Int?> lastPoints = new Dictionary<int, Vector2Int?>();
 
     public enum ToolMode
     {
         Pen,
-        Eraser,
+        Fill,
+        Line,
+        Circle,
+        Rectangle,
     }
-    public ToolMode currentMode;
 
-    public int undoStackCount { get { return undoStack.Count; } }
-    public int redoStackCount { get { return redoStack.Count; } }
+    public event Action<Color> OnColorChanged;
+    public event Action<int> OnBrushSizeChanged;
+    public event Action<ToolMode> OnToolModeChanged;
+    public event Action<int, int> OnFieldSizeChanged;
+    public event Action<int, int> OnHistoryChanged;
+    public event Action<bool> OnHasDrawingChanged;
+    public event Action<bool> OnDrawableChanged;
 
-    Dictionary<int, Vector2Int?> lastPoints = new Dictionary<int, Vector2Int?>();
-    Dictionary<int, Color> playerColors = new Dictionary<int, Color>(); // プレイヤーごとの色設定
-    Dictionary<int, int> playerPenSizes = new Dictionary<int, int>(); // プレイヤーごとのペンサイズ設定
 
     private void Awake()
     {
@@ -48,149 +67,216 @@ public class EshiritoriDrawingManager : MonoBehaviourPunCallbacks
         {
             Destroy(gameObject);
         }
+
+        // スタックの初期生成
+        undoStack = new Stack<Color32[]>();
+        redoStack = new Stack<Color32[]>();
     }
 
     private void Start()
     {
-        CanvasWidth = CanvasHeight = 50; // キャンバスの初期サイズ
+        InitializeDrawField();
+    }
 
-        // スタックの初期生成
-        undoStack = new Stack<Color[]>();
-        redoStack = new Stack<Color[]>();
-
+    public void InitializeDrawField()
+    {
         // Texture2Dを作成
-        CreateTexture(CanvasWidth, CanvasHeight);
+        CreateTexture(initialWidth, initialHeight);
 
-        // ゲーム開始時はペンモード
-        currentMode = ToolMode.Pen;
-
-        SetDrawFieldSize(CanvasWidth, CanvasHeight);
+        // ゲーム開始時は黒色ペンモード
+        ChangeColor(Color.black);
+        SetBrushSize(1);
+        ChangeMode(ToolMode.Pen);
     }
 
     // テクスチャを作成
     [PunRPC]
     private void CreateTexture(int width, int height)
     {
+        if (texture != null)
+        {
+            Destroy(texture);
+            texture = null;
+        }
+
         CanvasWidth = width;
         CanvasHeight = height;
-        texture = new Texture2D(CanvasWidth, CanvasHeight, TextureFormat.RGBA32, false);
-        texture.filterMode = FilterMode.Point; // ドット絵くっきりモード
-        ClearCanvas(); // テクスチャを初期化
+        texture = new Texture2D(CanvasWidth, CanvasHeight, TextureFormat.RGBA32, false)
+        {
+            filterMode = FilterMode.Point
+        };
+        ClearCanvas();
         drawingPanel.texture = texture;
         undoStack.Clear();
         redoStack.Clear();
-        undoStack.Push(texture.GetPixels());
+        undoStack.Push(texture.GetPixels32());
         drawer = new DrawingUtils(texture, drawColor, brushSize);
+
+        OnFieldSizeChanged?.Invoke(width, height);
     }
 
-    // 描画領域のサイズを設定
-    [PunRPC]
-    private void SetDrawFieldSize(int width, int height)
+    public void ResetDrawFieldSize(int size)
     {
-        RectTransform rectTransform = drawField.GetComponent<RectTransform>();
-        float aspectRatio = (float)width / height;
-
-        if (aspectRatio > 1)
-        {
-            rectTransform.sizeDelta = new Vector2(size, size / aspectRatio);
-        }
-        else
-        {
-            rectTransform.sizeDelta = new Vector2(size * aspectRatio, size);
-        }
-    }
-
-    public void ResetDrawFieldSize(int width, int height)
-    { 
-        if (PhotonNetwork.InRoom)
-        {
-            photonView.RPC("CreateTexture", RpcTarget.All, width, height);
-            photonView.RPC("SetDrawFieldSize", RpcTarget.All, width, height);
-        }
-        else
-        {
-            CreateTexture(width, height);
-            SetDrawFieldSize(width, height);
-        }
+        photonView.RPC("CreateTexture", RpcTarget.All, size, size);
     }
 
     private void Update()
     {
-        Vector2 localPoint;
-        RectTransformUtility.ScreenPointToLocalPointInRectangle(drawingPanel.rectTransform, Input.mousePosition, null, out localPoint);
+        if (!isDrawable || texture == null) return;
+        if (!TryGetMouseLocalPoint(out var localPoint)) return;
 
-        Rect rect = drawingPanel.rectTransform.rect;
-        int x = Mathf.FloorToInt((localPoint.x - rect.x) / rect.width * texture.width);
-        int y = Mathf.FloorToInt((localPoint.y - rect.y) / rect.height * texture.height);
-
-        if (!isDrawable)
+        switch (currentMode)
         {
-            return;
-        }
+            case ToolMode.Pen:
+                UpdatePen(localPoint);
+                break;
 
-        // ペンツール
-        if (currentMode == ToolMode.Pen || currentMode == ToolMode.Eraser)
-        {
-            if (Input.GetMouseButtonDown(0))
-            {
-                if (IsInsideCanvas(localPoint))
-                {
-                    isDrawing = true;
-                }
-            }
+            case ToolMode.Fill:
+                UpdateFill(localPoint);
+                break;
 
-            if (Input.GetMouseButton(0))
-            {
-                if (isDrawing)
-                {
-                    if (PhotonNetwork.InRoom)
-                    {
-                        if (IsInsideCanvas(localPoint))
-                        {
-                            int actorNumber = PhotonNetwork.LocalPlayer.ActorNumber;
-                            photonView.RPC("DrawAtPointRPC", RpcTarget.All, actorNumber, x, y, drawColor.r, drawColor.g, drawColor.b, drawColor.a, brushSize);
-                        }
-                    }
-                    else
-                    {
-                        DrawAtPoint(localPoint);
-                    }
-                }
-            }
+            case ToolMode.Line:
+                UpdateLine(localPoint);
+                break;
 
-            if (Input.GetMouseButtonUp(0))
-            {
-                lastPoint = null;
-                if (isDrawing)
-                {
-                    if (PhotonNetwork.InRoom)
-                    {
-                        int actorNumber = PhotonNetwork.LocalPlayer.ActorNumber;
-                        photonView.RPC("ResetLastPoint", RpcTarget.All, actorNumber);
-                        photonView.RPC("SaveUndo", RpcTarget.All);
-                    }
-                    else
-                    {
-                        SaveUndo();
-                    }
-                    isDrawing = false;
-                }
-            }
+            case ToolMode.Circle:
+            case ToolMode.Rectangle:
+                UpdateShapeDrag(localPoint);
+                break;
         }
     }
 
-    [PunRPC]
-    private void DrawAtPointRPC(int actorNumber, int x, int y, float r, float g, float b, float a, int size)
+    private void UpdatePen(Vector2 localPoint)
     {
-        Vector2Int point = new Vector2Int(x, y);
-        Color color = new Color(r, g, b, a);
+        if (Input.GetMouseButtonDown(0) && IsInsideCanvas(localPoint))
+            isDrawing = true;
 
-        Debug.Log("point: " + point);
-        Debug.Log("color: " + color);
+        if (Input.GetMouseButton(0) && isDrawing)
+        {
+            if (!IsInsideCanvas(localPoint)) return;
+            if (!TryGetPixelPos(localPoint, out var p)) return;
 
-        // プレイヤーの設定を更新
-        playerColors[actorNumber] = color;
-        playerPenSizes[actorNumber] = size;
+            int actorNumber = PhotonNetwork.LocalPlayer.ActorNumber;
+            photonView.RPC("DrawAtPixelRPC", RpcTarget.All,
+                actorNumber, p.x, p.y,
+                drawColor.r, drawColor.g, drawColor.b, drawColor.a,
+                brushSize);
+        }
+
+        if (Input.GetMouseButtonUp(0) && isDrawing)
+        {
+            isDrawing = false;
+
+            int actorNumber = PhotonNetwork.LocalPlayer.ActorNumber;
+            photonView.RPC("ResetLastPoint", RpcTarget.All, actorNumber);
+        }
+    }
+
+    private void UpdateFill(Vector2 localPoint)
+    {
+        if (Input.GetMouseButtonDown(0))
+        {
+            if (!IsInsideCanvas(localPoint)) return;
+            if (!TryGetPixelPos(localPoint, out var p)) return;
+
+            int actorNumber = PhotonNetwork.LocalPlayer.ActorNumber;
+            photonView.RPC("FloodFillRPC", RpcTarget.All,
+                actorNumber, p.x, p.y,
+                drawColor.r, drawColor.g, drawColor.b, drawColor.a,
+                brushSize);
+        }
+    }
+
+    private void UpdateLine(Vector2 localPoint)
+    {
+        if (Input.GetMouseButtonUp(0))
+        {
+            if (!IsInsideCanvas(localPoint)) return;
+            if (!TryGetPixelPos(localPoint, out var p)) return;
+
+            // 一回目のクリックで始点を設定
+            if (startPoint == null)
+            {
+                startPoint = p;
+                return;
+            }
+
+            int actorNumber = PhotonNetwork.LocalPlayer.ActorNumber;
+            photonView.RPC("DrawShapeRPC", RpcTarget.All,
+                actorNumber, startPoint.Value.x, startPoint.Value.y, p.x, p.y,
+                 (int)currentMode, drawColor.r, drawColor.g, drawColor.b, drawColor.a, brushSize);
+
+            startPoint = null;
+        }
+    }
+
+    private void UpdateShapeDrag(Vector2 localPoint)
+    {
+        if (Input.GetMouseButtonDown(0))
+        {
+            // 始点の設定
+            if (!IsInsideCanvas(localPoint)) return;
+            if (!TryGetPixelPos(localPoint, out var p)) return;
+
+            startPixel = p;
+            isDrawing = true;
+        }
+
+        if (Input.GetMouseButtonUp(0) && isDrawing)
+        {
+            isDrawing = false;
+            if (!IsInsideCanvas(localPoint)) return;
+            if (!TryGetPixelPos(localPoint, out var end)) return;
+
+            int actorNumber = PhotonNetwork.LocalPlayer.ActorNumber;
+            photonView.RPC("DrawShapeRPC", RpcTarget.All,
+                actorNumber, startPixel.x, startPixel.y, end.x, end.y,
+                 (int)currentMode, drawColor.r, drawColor.g, drawColor.b, drawColor.a, brushSize);
+        }
+    }
+
+    private bool TryGetMouseLocalPoint(out Vector2 localPoint)
+    {
+        return RectTransformUtility.ScreenPointToLocalPointInRectangle(
+            drawingPanel.rectTransform,
+            Input.mousePosition,
+            null,
+            out localPoint
+            );
+    }
+    private bool TryGetPixelPos(Vector2 localPoint, out Vector2Int pixelPos)
+    {
+        pixelPos = default;
+
+        Rect rect = drawingPanel.rectTransform.rect;
+        if (rect.width <= 0 || rect.height <= 0) return false;
+
+        int x = Mathf.FloorToInt((localPoint.x - rect.x) / rect.width * texture.width);
+        int y = Mathf.FloorToInt((localPoint.y - rect.y) / rect.height * texture.height);
+
+        // 範囲クランプ（外を触っても落ちないように）
+        x = Mathf.Clamp(x, 0, texture.width - 1);
+        y = Mathf.Clamp(y, 0, texture.height - 1);
+
+        pixelPos = new Vector2Int(x, y);
+        return true;
+    }
+
+    private bool IsInsideCanvas(Vector2 localPoint)
+    {
+        Rect rect = drawingPanel.rectTransform.rect;
+        return localPoint.x >= rect.x && localPoint.x <= rect.x + rect.width
+            && localPoint.y >= rect.y && localPoint.y <= rect.y + rect.height;
+    }
+
+    [PunRPC]
+    private void DrawAtPixelRPC(int actorNumber, int x, int y, float r, float g, float b, float a, int size)
+    {
+        x = Mathf.Clamp(x, 0, texture.width - 1);
+        y = Mathf.Clamp(y, 0, texture.height - 1);
+
+        var point = new Vector2Int(x, y);
+        var color = new Color(r, g, b, a);
 
         if (!lastPoints.ContainsKey(actorNumber))
         {
@@ -198,20 +284,18 @@ public class EshiritoriDrawingManager : MonoBehaviourPunCallbacks
         }
 
         // 一時的にそのプレイヤー設定でDrawingUtilsを使う
-        DrawingUtils tempDrawer = new DrawingUtils(texture, color, size);
+        var tempDrawer = new DrawingUtils(texture, color, size);
 
-        if (IsInsideCanvas(new Vector2(x, y)))
+        if (lastPoints[actorNumber].HasValue)
         {
-            if (lastPoints[actorNumber].HasValue)
-            {
-                tempDrawer.DrawLine(lastPoints[actorNumber].Value, point); // 2回目以降の描画
-            }
-            else
-            {
-                tempDrawer.DrawPoint(point); // 最初の描画
-            }
-            lastPoints[actorNumber] = point;
+            tempDrawer.DrawLine(lastPoints[actorNumber].Value, point); // 2回目以降の描画
         }
+        else
+        {
+            tempDrawer.DrawPoint(point); // 最初の描画
+        }
+
+        lastPoints[actorNumber] = point;
         texture.Apply();
     }
 
@@ -222,60 +306,63 @@ public class EshiritoriDrawingManager : MonoBehaviourPunCallbacks
         {
             lastPoints[actorNumber] = null;
         }
-    }
-
-    private void DrawAtPoint(Vector2 localPoint)
-    {
-        Rect rect = drawingPanel.rectTransform.rect;
-
-        // ローカル座標をTexture2Dの座標に変換
-        int x = Mathf.FloorToInt((localPoint.x - rect.x) / rect.width * texture.width);
-        int y = Mathf.FloorToInt((localPoint.y - rect.y) / rect.height * texture.height);
-
-        if (IsInsideCanvas(localPoint))
-        {
-            if (lastPoint.HasValue)
-            {
-                drawer.DrawLine(lastPoint.Value, new Vector2Int(x, y)); // 2回目以降の描画
-            }
-            else
-            {
-                drawer.DrawPoint(new Vector2Int(x, y)); // 最初の描画
-            }
-
-            lastPoint = new Vector2Int(x, y);
-        }
-        texture.Apply();
+        SaveUndo();
     }
 
     [PunRPC]
+    private void DrawShapeRPC(int actorNumber, int startX, int startY, int endX, int endY, int modeInt, float r, float g, float b, float a, int size)
+    {
+        var color = new Color(r, g, b, a);
+        var tempDrawer = new DrawingUtils(texture, color, size);
+        var mode = (ToolMode)modeInt;
+
+        switch (mode)
+        {
+            case ToolMode.Line: tempDrawer.DrawLine(new Vector2Int(startX, startY), new Vector2Int(endX, endY)); break;
+            case ToolMode.Circle: tempDrawer.DrawCircle(new Vector2Int(startX, startY), new Vector2Int(endX, endY)); break;
+            case ToolMode.Rectangle: tempDrawer.DrawRectangle(new Vector2Int(startX, startY), new Vector2Int(endX, endY)); break;
+        }
+
+        texture.Apply();
+        SaveUndo();
+    }
+
+    [PunRPC]
+    private void FloodFillRPC(int actorNumber, int x, int y, float r, float g, float b, float a, int size)
+    {
+        x = Mathf.Clamp(x, 0, texture.width - 1);
+        y = Mathf.Clamp(y, 0, texture.height - 1);
+
+        Color color = new Color(r, g, b, a);
+
+        // 一時的にそのプレイヤー設定でDrawingUtilsを使う
+        var tempDrawer = new DrawingUtils(texture, color, size);
+
+        tempDrawer.FloodFillPixel(x, y);
+        texture.Apply();
+        SaveUndo();
+    }
+
     private void SaveUndo()
     {
-        undoStack.Push(texture.GetPixels()); // 現在の状態を保存
+        undoStack.Push(texture.GetPixels32()); // 現在の状態を保存
         redoStack.Clear(); // 新しく描画したらRedo履歴はクリア
+        NotifyHistory();
+        SetHasDrawing(ComputeHasDrawing());
     }
 
     public void UndoButton()
     {
-        if (PhotonNetwork.InRoom)
-        {
-            photonView.RPC("Undo", RpcTarget.All);
-        }
-        else
-        {
-            Undo();
-        }
+        photonView.RPC("Undo", RpcTarget.All);
     }
     public void RedoButton() 
     {
-        if (PhotonNetwork.InRoom)
-        {
-            photonView.RPC("Redo", RpcTarget.All);
-        }
-        else
-        {
-            Redo();
-        }
+        photonView.RPC("Redo", RpcTarget.All);
+    }
+
+    public void AllClearButton()
+    {
+        photonView.RPC("AllClear", RpcTarget.All);
     }
 
     [PunRPC]
@@ -284,8 +371,10 @@ public class EshiritoriDrawingManager : MonoBehaviourPunCallbacks
         if (undoStackCount > 1)
         {
             redoStack.Push(undoStack.Pop());
-            texture.SetPixels(undoStack.Peek());
+            texture.SetPixels32(undoStack.Peek());
             texture.Apply();
+            NotifyHistory();
+            SetHasDrawing(ComputeHasDrawing());
         }
     }
     [PunRPC]
@@ -294,70 +383,65 @@ public class EshiritoriDrawingManager : MonoBehaviourPunCallbacks
         if (redoStackCount > 0)
         {
             undoStack.Push(redoStack.Pop());
-            texture.SetPixels(undoStack.Peek());
+            texture.SetPixels32(undoStack.Peek());
             texture.Apply();
+            NotifyHistory();
+            SetHasDrawing(ComputeHasDrawing());
         }
     }
 
+    [PunRPC]
     public void AllClear()
     {
-        if (PhotonNetwork.InRoom)
-        {
-            photonView.RPC("ClearCanvas", RpcTarget.All);
-            photonView.RPC("SaveUndo", RpcTarget.All);
-        }
-        else
-        {
-            ClearCanvas();
-            SaveUndo();
-        }
-    }
-
-    public void ResetDrawField()
-    { 
-        photonView.RPC("ResetSetting", RpcTarget.All);
-    }
-
-    [PunRPC]
-    private void ResetSetting()
-    { 
-        undoStack.Clear();
-        redoStack.Clear();
         ClearCanvas();
-        undoStack.Push(texture.GetPixels());
+        SaveUndo();
     }
 
-    [PunRPC]
     private void ClearCanvas()
     {
-        Color[] clearColors = new Color[texture.width * texture.height];
-        for (int i = 0; i < clearColors.Length; i++)
-        {
-            clearColors[i] = new Color(1, 1, 1, 0);
-        }
-        texture.SetPixels(clearColors);
+        if (texture == null) return;
+
+        EnsureClearBuffer();
+        texture.SetPixels32(clearBuffer);
         texture.Apply();
     }
 
-    // 盤面に何か描かれているかどうか
-    public bool HasDrawing()
+    private void EnsureClearBuffer()
     {
-        Color32[] pixels = texture.GetPixels32();
-        foreach (Color32 pixel in pixels)
+        int len = texture.width * texture.height;
+        if (clearBuffer == null || clearBuffer.Length != len)
         {
-            if (pixel.a != 0)
-            {
-                return true;
-            }
+            clearBuffer = new Color32[len];
+            var t = new Color32(0, 0, 0, 0);
+            for (int i = 0; i < len; i++) clearBuffer[i] = t;
         }
+    }
+
+    private bool ComputeHasDrawing()
+    {
+        var pixels = texture.GetPixels32();
+        for (int i = 0; i < pixels.Length; i++)
+            if (pixels[i].a != 0) return true;
         return false;
     }
 
-    private bool IsInsideCanvas(Vector2 localPoint)
+    private void SetHasDrawing(bool value)
     {
-        Rect rect = drawingPanel.rectTransform.rect;
-        return localPoint.x >= rect.x && localPoint.x <= rect.x + rect.width
-            && localPoint.y >= rect.y && localPoint.y <= rect.y + rect.height;
+        if (hasDrawing == value) return;
+        hasDrawing = value;
+        OnHasDrawingChanged?.Invoke(hasDrawing);
+    }
+
+    public void SetDrawable(bool value)
+    {
+        if (isDrawable == value) return;
+        isDrawable = value;
+        OnDrawableChanged?.Invoke(isDrawable);
+    }
+
+    private void NotifyHistory()
+    {
+        OnHistoryChanged?.Invoke(undoStackCount, redoStackCount);
     }
 
     public void ChangeMode(ToolMode mode)
@@ -370,24 +454,39 @@ public class EshiritoriDrawingManager : MonoBehaviourPunCallbacks
         {
             currentMode = mode;
         }
-        isDrawing = false;
     }
 
     [PunRPC]
     private void ChangeModeRPC(ToolMode mode)
     {
+        if (currentMode == mode) return;
+
         currentMode = mode;
+        isDrawing = false;
+        startPoint = null;
+        startPixel = default;
+
+        OnToolModeChanged?.Invoke(currentMode);
     }
 
     public void ChangeColor(Color color)
     {
+        if (drawColor == color) return;
+
         drawColor = color;
         drawer = new DrawingUtils(texture, drawColor, brushSize);
+
+        OnColorChanged?.Invoke(drawColor);
     }
 
-    public void OnValueChangedBrushSize(Slider slider)
+    public void SetBrushSize(int size)
     {
-        brushSize = (int)slider.value;
+        size = Mathf.Clamp(size, 1, 7);
+        if (brushSize == size) return;
+
+        brushSize = size;
         drawer = new DrawingUtils(texture, drawColor, brushSize);
+
+        OnBrushSizeChanged?.Invoke(brushSize);
     }
 }
