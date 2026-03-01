@@ -139,7 +139,15 @@ public class ImagePanelController : MonoBehaviour
         }
 
         float percent = (float)correct / total * 100f;
-        resultText.text = $"正解率：{percent:0.#}% ({correct}/{total})";
+
+        if (percent >= 99.9f)
+        {
+            resultText.text = $"正解率：{percent:0.#}% ({correct}/{total})！ 素晴らしい！";
+        }
+        else
+        {
+            resultText.text = $"正解率：{percent:0.#}% ({correct}/{total})";
+        }
     }
 
     private void SetMaruBatsu(bool isMaru)
