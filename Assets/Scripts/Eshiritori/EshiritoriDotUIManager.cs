@@ -128,9 +128,9 @@ public class EshiritoriDotUIManager : MonoBehaviour
         EshiritoriDrawingManager.instance.ResetDrawFieldSize(sizeInputField.inputPixelSize);
     }
 
-    public void SetRoleText(bool isQuestioner)
+    public void SetRoleText(bool isDrawer)
     {
-        roleText.text = isQuestioner == true ? "あなたは描き手です" : "あなたは回答者です";
+        roleText.text = isDrawer == true ? "あなたが描き手です" : "";
     }
 
     public void OnClickUndoButton() => dm.UndoButton();
