@@ -72,28 +72,10 @@ crashlytics-build.properties
 /[Aa]ssets/[Ss]treamingAssets/aa.meta
 /[Aa]ssets/[Ss]treamingAssets/aa/*
 
-# Photon 関連のライブラリを除外
-Assets/Photon/PhotonUnityNetworking/
-Assets/Photon/PhotonChat/
-Assets/Photon/PhotonRealtime/
-Assets/Photon/PhotonLibs/
-Assets/Photon/Editor/
-
-# ただし、 PhotonServerSettings は管理対象
-!Assets/Photon/PhotonUnityNetworking/Resources/PhotonServerSettings.asset
-
 # ビルドデータを除外
-Buildtest/
-BuildtestWeb/
+Build*/
+build*/
 
-Assets/UniversalRenderPipelineGlobalSettings.asset
-Assets/UniversalRenderPipelineGlobalSettings.asset.meta
+.vscode/
 
-[Ll]ibrary/
-[Tt]emp/
-[Oo]bj/
-[Bb]uild/
-[Bb]uilds/
-Logs/
-UserSettings/
-MemoryCaptures/
+.DS_Store
