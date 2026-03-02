@@ -10,7 +10,7 @@ public class DengonHueSlider : MonoBehaviour, IPointerClickHandler, IDragHandler
 
     [SerializeField] Image hueCursorImage; // Hueスライダーのカーソル
     [SerializeField] RectTransform hueCursor; // Hueスライダーのカーソル
-    [SerializeField] SVMap svMap; // SVマップ
+    [SerializeField] DengonSVMap svMap; // SVマップ
 
     private float hue;
 
