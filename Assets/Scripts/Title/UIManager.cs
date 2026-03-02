@@ -47,6 +47,7 @@ public class UIManager : MonoBehaviourPunCallbacks
     [SerializeField] Button shiritoriStartButton;
     [SerializeField] InputField shiritoriTimeInputField;
     //[SerializeField] InputField shiritoriAnswerTimeInputField;
+    [SerializeField] ToggleGroup dengonDifficultyToggleGroup;
     [SerializeField] int shiritoriTime;
     //[SerializeField] int shiritoriAnswerTime;
     private bool isErrorShiritoriTime;
@@ -388,6 +389,10 @@ public class UIManager : MonoBehaviourPunCallbacks
         {
             PlayerPrefs.SetInt("DengonTime", dengonTime);
             PlayerPrefs.SetInt("DengonAnswerTime", dengonAnswerTime);
+
+            var onToggle = dengonDifficultyToggleGroup.ActiveToggles().FirstOrDefault();
+            int value = onToggle.GetComponent<DifficultyToggle>().difficultyValue;
+            PlayerPrefs.SetInt("Difficulty", value);
 
             PlayerPrefs.Save();
             StartSceneForAll("Dengon");

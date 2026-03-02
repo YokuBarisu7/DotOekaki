@@ -142,6 +142,7 @@ public class EshiritoriManager : MonoBehaviourPunCallbacks
         answerTurnNum = 0;
         answerList.Clear();
 
+        imagePanelController.HideText();
         imagePanelController.ClearAllImageView();
         drawerNumber = 0;
         answererNumber = 0;

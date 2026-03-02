@@ -45,9 +45,10 @@ public class GoogleSheetLoader : MonoBehaviour
             int answerStartIndex;
             switch (mode)
             {
-                case 0: questionIndex = 0; answerStartIndex = 1; break; // ふつう
-                case 1: questionIndex = 5; answerStartIndex = 6; break; // むずかしい
-                default: questionIndex = 0; answerStartIndex = 1; break;
+                case 0: questionIndex = 10; answerStartIndex = 11; break; // かんたん
+                case 1: questionIndex = 15; answerStartIndex = 16; break; // ふつう
+                case 2: questionIndex = 20; answerStartIndex = 21; break; // むずかしい
+                default: questionIndex = 10; answerStartIndex = 11; break; // デフォルトはかんたん
             }
 
             string themeText = (data.Length > questionIndex) ? ClearString(data[questionIndex]) : "";

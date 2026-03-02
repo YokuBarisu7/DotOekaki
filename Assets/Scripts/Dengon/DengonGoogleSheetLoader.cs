@@ -40,13 +40,14 @@ public class DengonGoogleSheetLoader : MonoBehaviour
         {
             string[] data = dataLines[i].Split(',');
 
-            int themeIndex = -1;
-            int answerStartIndex = -1;
+            int themeIndex;
+            int answerStartIndex;
             switch (mode)
             {
                 case 0: themeIndex = 10; answerStartIndex = 11; break; // かんたん
                 case 1: themeIndex = 15; answerStartIndex = 16; break; // ふつう
                 case 2: themeIndex = 20; answerStartIndex = 21; break; // むずかしい
+                default: themeIndex = 10; answerStartIndex = 11; break;
             }
 
             string themeText = (data.Length > themeIndex) ? ClearString(data[themeIndex]) : "";

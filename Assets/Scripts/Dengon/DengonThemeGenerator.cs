@@ -43,7 +43,7 @@ public class DengonThemeGenerator : MonoBehaviourPunCallbacks
 
     private void GenerateAndBroadcastThemes(bool isFirst)
     {
-        mode = PlayerPrefs.GetInt("Mode", 0);
+        mode = PlayerPrefs.GetInt("Difficulty", 0);
 
         dengonGoogleSheetLoader.LoadDataFromGoogleSheetDengon(mode, () =>
         {

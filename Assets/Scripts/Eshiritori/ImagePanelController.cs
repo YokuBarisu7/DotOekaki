@@ -142,7 +142,7 @@ public class ImagePanelController : MonoBehaviour
 
         if (percent >= 99.9f)
         {
-            resultText.text = $"正解率：{percent:0.#}% ({correct}/{total})！ 素晴らしい！";
+            resultText.text = $"正解率：{percent:0.#}% ({correct}/{total}) すごい！";
         }
         else
         {
@@ -154,6 +154,12 @@ public class ImagePanelController : MonoBehaviour
     {
         marubatsu.gameObject.SetActive(true);
         marubatsu.sprite = isMaru ? maruSprite : batsuSprite;
+    }
+
+    public void HideText()
+    { 
+        resultText.gameObject.SetActive(false);
+        marubatsu.gameObject.SetActive(false);
     }
 
     public void ClearAllImageView()
