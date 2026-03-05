@@ -37,8 +37,6 @@ public class CooperateUIManager : MonoBehaviour
     {
         TryBind();
 
-        backButton1.onClick.AddListener(() => { PhotonManager.instance.OnLeaveRoomAndDestroy(); } );
-        backButton2.onClick.AddListener(() => { PhotonManager.instance.OnLeaveRoomAndDestroy(); });
         brushSizeSlider.onValueChanged.AddListener(OnBrushSizeSliderChanged);
         mekakushiToggle.onValueChanged.AddListener(_ => OnMekakushiToggle());
     }
@@ -91,6 +89,7 @@ public class CooperateUIManager : MonoBehaviour
 
     private void OnColorChanged(Color color)
     {
+        color.a = 1;
         currentColor.color = color;
     }
 

@@ -75,12 +75,15 @@ public class EshiritoriManager : MonoBehaviourPunCallbacks
         }
         Shuffle(list);
 
+        int roundNumber = PlayerPrefs.GetInt("ShiritoriRound", 2);
         int n = list.Count;
-        int[] twoRoundOrder = new int[n * 2];
-        for (int i = 0; i < n; i++)
+        int[] roundsOrder = new int[n * roundNumber];
+        for (int rN = 0; rN < roundNumber; rN++)
         {
-            twoRoundOrder[i] = list[i];
-            twoRoundOrder[i + n] = list[i];
+            for (int i = 0; i < n; i++)
+            {
+                roundsOrder[rN * n + i] = list[i];
+            }
         }
 
         var hash = new ExitGames.Client.Photon.Hashtable
@@ -88,7 +91,7 @@ public class EshiritoriManager : MonoBehaviourPunCallbacks
             [ROOM_ROUND] = nextRoundId,
             [ROOM_FIRST] = first,
             [ROOM_LAST] = last,
-            [ROOM_ORDER] = twoRoundOrder
+            [ROOM_ORDER] = roundsOrder
         };
         PhotonNetwork.CurrentRoom.SetCustomProperties(hash);
     }
@@ -105,13 +108,13 @@ public class EshiritoriManager : MonoBehaviourPunCallbacks
     {
         TryApplyRoomSetup();
     }
-
+    
     private void TryApplyRoomSetup()
     {
         SetReady(false);
 
         var props = PhotonNetwork.CurrentRoom.CustomProperties;
-
+        
         if (!props.TryGetValue(ROOM_ROUND, out var roundObj)) return;
         if (!(roundObj is int roundId)) return;
 
@@ -207,7 +210,9 @@ public class EshiritoriManager : MonoBehaviourPunCallbacks
 
         for (int i = 0; i < maxTurnNum; i++)
         {
-            imagePanelController.CreateNewImageView();
+            int actorNumber = drawerOrder[i];
+            string name = PhotonNetwork.CurrentRoom.GetPlayer(actorNumber).NickName;
+            imagePanelController.CreateNewImageView(name);
         }
     }
 
@@ -246,7 +251,16 @@ public class EshiritoriManager : MonoBehaviourPunCallbacks
         // 回答者が回答する前にターンが終わってしまった場合、強制終了する
         if (PhotonNetwork.LocalPlayer.ActorNumber == answererNumber)
         {
+            answerView.OnSubmit();
             answerView.CloseAnswerPanel();
+        }
+
+        if (PhotonNetwork.IsMasterClient && answerTurnNum >= maxTurnNum + 1)
+        {
+            Debug.Log("ゲーム終了");
+            dotUIManager.SetResultDisplayButton(true);
+            photonView.RPC("FinishSetting", RpcTarget.All);
+            return;
         }
 
         answererNumber = drawerOrder[currentTurnNum - 1];
@@ -269,7 +283,7 @@ public class EshiritoriManager : MonoBehaviourPunCallbacks
 
         AdvanceNextTurn();
     }
-
+    
     public void AdvanceNextTurn()
     {
         if (currentTurnNum >= maxTurnNum)
@@ -281,7 +295,7 @@ public class EshiritoriManager : MonoBehaviourPunCallbacks
         photonView.RPC("TurnStart", RpcTarget.All);
     }
 
-    public void SetAnswer(string answer)
+    private void SetAnswer(string answer)
     {
         int senderNumber = PhotonNetwork.LocalPlayer.ActorNumber;
         int answerIndex = answerTurnNum - 1;
@@ -297,8 +311,7 @@ public class EshiritoriManager : MonoBehaviourPunCallbacks
         answerList[answerIndex] = answer;
         bool isMe = senderNumber == PhotonNetwork.LocalPlayer.ActorNumber;
         string displayAnswer = isMe ? answer : new string('●', answer.Length); // 自分以外には伏字
-        string senderName = PhotonNetwork.CurrentRoom.GetPlayer(senderNumber).NickName;
-        imagePanelController.SetText(displayAnswer, senderName, answerIndex);
+        imagePanelController.SetAnswerText(displayAnswer, answerIndex);
 
         if (PhotonNetwork.IsMasterClient && answerTurnNum >= maxTurnNum)
         {

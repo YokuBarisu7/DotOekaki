@@ -5,16 +5,13 @@ public class AnswerView : MonoBehaviour
 {
     [SerializeField] InputField inputField;
     [SerializeField] Text errorText;
+    [SerializeField] Button submitButton;
     public System.Action<string> OnSubmitAnswer;
 
 
     private void Start()
     {
-        // 1文字入力されるたびに検証して、ダメなら '\0' を返すと入力されない
-        inputField.onValidateInput = ValidateKanaOnly;
-
-        // IMEの漢字変換は InputField だけでは完全抑止できないので提出時チェックもする
-        inputField.onValueChanged.AddListener(_ => ClearError());
+        inputField.onValueChanged.AddListener(OnInputChanged);
     }
 
     public void OnSubmit()
@@ -31,21 +28,26 @@ public class AnswerView : MonoBehaviour
     public void OpenAnswerPanel()
     {
         gameObject.SetActive(true);
+        ClearError();
+        inputField.ActivateInputField();
     }
 
     public void CloseAnswerPanel()
     {
         gameObject.SetActive(false);
         inputField.text = string.Empty;
+        ClearError();
     }
 
-    private char ValidateKanaOnly(string text, int charIndex, char addedChar)
+    private void OnInputChanged(string text)
     {
-        if (IsAllowedKanaChar(addedChar))
-            return addedChar;
+        bool valid = IsKanaOnly(text);
+        submitButton.interactable = valid;
 
-        ShowError();
-        return '\0'; // 入力を拒否
+        if (valid)
+            ClearError();
+        else
+            ShowError();
     }
 
     public static bool IsAllowedKanaChar(char c)
@@ -64,7 +66,7 @@ public class AnswerView : MonoBehaviour
 
     public static bool IsKanaOnly(string s)
     {
-        if (string.IsNullOrEmpty(s)) return false; // 空欄を許すなら true に変えてOK
+        if (string.IsNullOrEmpty(s)) return false;
         foreach (char c in s)
         {
             if (!IsAllowedKanaChar(c)) return false;

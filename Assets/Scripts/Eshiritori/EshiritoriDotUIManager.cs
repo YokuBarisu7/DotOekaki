@@ -11,6 +11,7 @@ public class EshiritoriDotUIManager : MonoBehaviour
     [SerializeField] Button redoButton;
     [SerializeField] Button clearButton;
     [SerializeField] Button sizeApplyButton;
+    [SerializeField] Button gameRestartButton;
     [SerializeField] Button backButton;
     [SerializeField] GameObject turnEndButton;
     [SerializeField] GameObject resultDisplayButton;
@@ -22,6 +23,8 @@ public class EshiritoriDotUIManager : MonoBehaviour
     [SerializeField] GameObject eraserButtonCover;
     [SerializeField] Text roleText;
     [SerializeField] SizeInputField sizeInputField;
+    [SerializeField] RoundCountInputField roundCountInputField;
+    [SerializeField] EshiritoriLimitTimeInputField limitTimeInputField;
     [SerializeField] Image currentColor;
     [SerializeField] Toggle mekakushiToggle;
     [SerializeField] GameObject sizeChangerPanel;
@@ -36,7 +39,6 @@ public class EshiritoriDotUIManager : MonoBehaviour
     {
         TryBind();
 
-        backButton.onClick.AddListener(() => { PhotonManager.instance.OnLeaveRoomAndDestroy(); });
         brushSizeSlider.onValueChanged.AddListener(OnBrushSizeSliderChanged);
         mekakushiToggle.onValueChanged.AddListener(_ => OnMekakushiToggle());
     }
@@ -52,6 +54,8 @@ public class EshiritoriDotUIManager : MonoBehaviour
         dm.OnColorChanged += OnColorChanged;
         dm.OnBrushSizeChanged += OnBrushSizeChanged;
         sizeInputField.OnStateChanged += OnSizeInputFieldValueChanged;
+        roundCountInputField.OnStateChanged += OnSettingInputFieldValueChanged;
+        limitTimeInputField.OnStateChanged += OnSettingInputFieldValueChanged;
         EshiritoriManager.instance.OnTurnStarted += SetTurnEndButton;
 
         RefreshAllUI();
@@ -104,6 +108,7 @@ public class EshiritoriDotUIManager : MonoBehaviour
 
     private void OnColorChanged(Color color)
     {
+        color.a = 1;
         currentColor.color = color;
     }
 
@@ -138,13 +143,25 @@ public class EshiritoriDotUIManager : MonoBehaviour
     public void OnClickAllClearButton() => dm.AllClearButton();
     public void OnClickColor(int index) => dm.ChangeColor(palette.colors[index]);
     public void OnClickToolButton(int index) => dm.ChangeMode((EshiritoriDrawingManager.ToolMode)index);
-    public void OnClickEraserButton() => dm.ChangeColor(new Color(0, 0, 0, 0));
+    public void OnClickEraserButton() => dm.ChangeColor(new Color(83, 83, 83, 0));
     public void ToggleIsDrawable() => dm.SetDrawable(!dm.IsDrawable);
     public void OnBrushSizeSliderChanged(float v) => dm.SetBrushSize((int)v);
 
     public void OnSizeInputFieldValueChanged()
     {
         SetInteractable(sizeApplyButton, !sizeInputField.IsError);
+    }
+
+    public void OnSettingInputFieldValueChanged()
+    {
+        if (roundCountInputField.IsError || limitTimeInputField.IsError)
+        {
+            SetInteractable(gameRestartButton, false);
+        }
+        else
+        {
+            SetInteractable(gameRestartButton, true);
+        }
     }
 
     public void OnClickTurnEndButton() => EshiritoriManager.instance.AdvanceNextTurn();

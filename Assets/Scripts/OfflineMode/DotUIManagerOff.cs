@@ -88,6 +88,7 @@ public class DotUIManagerOff : MonoBehaviour
 
     private void OnColorChanged(Color color)
     {
+        color.a = 1;
         currentColor.color = color;
     }
 
@@ -101,7 +102,7 @@ public class DotUIManagerOff : MonoBehaviour
     public void OnClickRedoButton() => dm.RedoButton();
     public void OnClickAllClearButton() => dm.AllClear();
     public void OnClickColor(int index) => dm.ChangeColor(palette.colors[index]);
-    public void OnClickEraserButton() => dm.ChangeColor(new Color(0, 0, 0, 0));
+    public void OnClickEraserButton() => dm.ChangeColor(new Color32(83, 83, 83, 0));
     public void OnClickToolButton(int index) => dm.ChangeMode((DrawingManagerOff.ToolMode)index);
     public void ToggleIsDrawable() => dm.SetDrawable(!dm.IsDrawable);
     public void OnMekakushiToggle() => blindPanel.SetActive(mekakushiToggle.isOn);

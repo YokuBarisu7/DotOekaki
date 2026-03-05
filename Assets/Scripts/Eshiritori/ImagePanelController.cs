@@ -48,7 +48,7 @@ public class ImagePanelController : MonoBehaviour
         lastCharacter.text = hiragana2;
     }
 
-    public void CreateNewImageView()
+    public void CreateNewImageView(string playerName)
     {
         var prefab = Instantiate(imageViewPrefab, parent.transform);
 
@@ -56,14 +56,15 @@ public class ImagePanelController : MonoBehaviour
         prefab.transform.SetSiblingIndex(lastIndex);
 
         var imageView = prefab.GetComponent<ImageView>();
-        imageView.SetText("", "");
+        imageView.SetPlayerText(playerName);
+        imageView.SetAnswerText("");
         imageViews.Add(imageView);
     }
 
-    public void SetText(string answer, string playerName, int index)
+    public void SetAnswerText(string answer, int index)
     {
         if (index < 0 || index >= imageViews.Count) return;
-        imageViews[index].SetText(answer, playerName);
+        imageViews[index].SetAnswerText(answer);
     }
 
     public void SetTexture(Texture2D texture, int index)

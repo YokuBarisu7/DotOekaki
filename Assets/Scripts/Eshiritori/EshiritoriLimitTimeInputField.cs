@@ -2,7 +2,7 @@ using System.Text.RegularExpressions;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class LimitTimeInputField : MonoBehaviour
+public class EshiritoriLimitTimeInputField : MonoBehaviour
 {
     [SerializeField] InputField inputField;
     [SerializeField] bool isError;
@@ -15,7 +15,7 @@ public class LimitTimeInputField : MonoBehaviour
         inputField.contentType = InputField.ContentType.IntegerNumber;
         inputField.onValueChanged.AddListener(OnInputValueChanged);
         inputField.onEndEdit.AddListener(ValidateInput);
-        inputField.text = 180.ToString(); // 初期値を180秒に設定
+        inputField.text = 60.ToString(); // 初期値を60秒に設定
     }
 
     private void ValidateInput(string input)
@@ -32,9 +32,9 @@ public class LimitTimeInputField : MonoBehaviour
         if (int.TryParse(input, out int value))
         {
             // 入力値が制限内かどうかをチェック
-            if (value >= 30 && value <= 999)
+            if (value >= 10 && value <= 999)
             {
-                PlayerPrefs.SetInt("LimitTime", value);
+                PlayerPrefs.SetInt("ShiritoriTime", value);
                 isError = false;
             }
             else

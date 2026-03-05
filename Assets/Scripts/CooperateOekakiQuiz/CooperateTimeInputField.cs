@@ -32,7 +32,7 @@ public class CooperateTimeInputField : MonoBehaviour
         if (int.TryParse(input, out int value))
         {
             // 入力値が制限内かどうかをチェック
-            if (value >= 1 && value <= 999)
+            if (value >= 30 && value <= 999)
             {
                 PlayerPrefs.SetInt("CooperateTime", value);
                 isError = false;

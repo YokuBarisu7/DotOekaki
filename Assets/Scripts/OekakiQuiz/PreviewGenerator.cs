@@ -195,7 +195,9 @@ public class PreviewGenerator : MonoBehaviour
 
     private void HandleColorChanged(Color c)
     {
+        c.a = 1;
         previewColor = c;
+        previewColor.a = 1f;
         if (previewTexture != null)
             drawer = new DrawingUtils(previewTexture, previewColor, previewBrushSize);
     }

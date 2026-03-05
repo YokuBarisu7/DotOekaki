@@ -45,11 +45,11 @@ public class UIManager : MonoBehaviourPunCallbacks
 
     // 絵しりとりモード
     [SerializeField] Button shiritoriStartButton;
+    [SerializeField] InputField shiritoriRoundInputField;
     [SerializeField] InputField shiritoriTimeInputField;
-    //[SerializeField] InputField shiritoriAnswerTimeInputField;
     [SerializeField] ToggleGroup dengonDifficultyToggleGroup;
+    [SerializeField] int shiritoriRound;
     [SerializeField] int shiritoriTime;
-    //[SerializeField] int shiritoriAnswerTime;
     private bool isErrorShiritoriTime;
     private bool isErrorShiritoriAnswerTime;
 
@@ -113,7 +113,7 @@ public class UIManager : MonoBehaviourPunCallbacks
         BindIntInput(cooperateTimeInputField, cooperateTime, OnCooperateTimeInputValueChanged, ValidateCooperateTimeInput);
 
         BindIntInput(shiritoriTimeInputField, shiritoriTime, OnShiritoriTimeInputValueChanged, ValidateShiritoriTimeInput);
-        //BindIntInput(shiritoriAnswerTimeInputField, shiritoriAnswerTime, OnShiritoriAnswerTimeInputValueChanged, ValidateShiritoriAnswerTimeInput);
+        BindIntInput(shiritoriRoundInputField, shiritoriRound, OnShiritoriRoundInputValueChanged, ValidateShiritoriRoundInput);
 
         BindIntInput(dengonTimeInputField, dengonTime, OnDengonTimeInputValueChanged, ValidateDengonTimeInput);
         BindIntInput(dengonAnswerTimeInputField, dengonAnswerTime, OnDengonAnswerTimeInputValueChanged, ValidateDengonAnswerTimeInput);
@@ -199,10 +199,18 @@ public class UIManager : MonoBehaviourPunCallbacks
     {
         PanelController.instance.OnClickButton(4);
 
-        roomNameText.text = $"ルーム名：{PhotonNetwork.CurrentRoom.Name}";
+        roomNameText.text = $"Password：{PhotonNetwork.CurrentRoom.Name}";
 
         // ホストのみゲームルールを選んで開始することができる
         UpdateLobbyUI();
+    }
+
+    public void OnClickCopyPasswordButton()
+    {
+        if (!PhotonNetwork.InRoom || PhotonNetwork.CurrentRoom == null) return;
+
+        string password = PhotonNetwork.CurrentRoom.Name;
+        GUIUtility.systemCopyBuffer = password;
     }
 
     // 協力おえかきモードはplayerが３人以上でプレイ可能(playerが入退室したときに実行)
@@ -216,7 +224,7 @@ public class UIManager : MonoBehaviourPunCallbacks
         UpdateLobbyUI();
     }
 
-    public void UpdateLobbyUI()
+    private void UpdateLobbyUI()
     {
         playerCountText.text = $"現在のプレイヤー数: {PhotonNetwork.CurrentRoom.PlayerCount} / {PhotonNetwork.CurrentRoom.MaxPlayers}";
         joinedPlayerText.text = BuildPlayerListText();
@@ -372,6 +380,7 @@ public class UIManager : MonoBehaviourPunCallbacks
     {
         if (PhotonNetwork.InRoom)
         {
+            PlayerPrefs.SetInt("ShiritoriRound", shiritoriRound);
             PlayerPrefs.SetInt("ShiritoriTime", shiritoriTime);
 
             PlayerPrefs.Save();
@@ -510,20 +519,20 @@ public class UIManager : MonoBehaviourPunCallbacks
     {
         ForceDigitsOrZero(shiritoriTimeInputField, input);
     }
-    //private void ValidateShiritoriAnswerTimeInput(string input)
-    //{
-    //    ForceDigitsOrZero(shiritoriAnswerTimeInputField, input);
-    //}
+    private void ValidateShiritoriRoundInput(string input)
+    {
+        ForceDigitsOrZero(shiritoriRoundInputField, input);
+    }
     private void OnShiritoriTimeInputValueChanged(string input)
     {
         ApplyIntRange(input, 10, 999, ref shiritoriTime, ref isErrorShiritoriTime);
         shiritoriStartButton.interactable = !isErrorShiritoriTime && !isErrorShiritoriAnswerTime;
     }
-    //private void OnShiritoriAnswerTimeInputValueChanged(string input)
-    //{
-    //    ApplyIntRange(input, 10, 300, ref shiritoriAnswerTime, ref isErrorShiritoriAnswerTime);
-    //    shiritoriStartButton.interactable = !isErrorShiritoriTime && !isErrorShiritoriAnswerTime;
-    //}
+    private void OnShiritoriRoundInputValueChanged(string input)
+    {
+        ApplyIntRange(input, 1, 5, ref shiritoriRound, ref isErrorShiritoriAnswerTime);
+        shiritoriStartButton.interactable = !isErrorShiritoriTime && !isErrorShiritoriAnswerTime;
+    }
 
 
     // 伝言ゲームモード

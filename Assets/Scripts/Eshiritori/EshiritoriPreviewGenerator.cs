@@ -195,6 +195,7 @@ public class EshiritoriPreviewGenerator : MonoBehaviour
 
     private void HandleColorChanged(Color c)
     {
+        c.a = 1;
         previewColor = c;
         if (previewTexture != null)
             drawer = new DrawingUtils(previewTexture, previewColor, previewBrushSize);

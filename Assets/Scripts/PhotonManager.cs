@@ -5,8 +5,6 @@ using UnityEngine.SceneManagement;
 
 public class PhotonManager : MonoBehaviourPunCallbacks
 {
-    public static PhotonManager instance;
-
     private enum LeaveDestination
     { 
         None,         // 戻り先：なし
@@ -18,15 +16,6 @@ public class PhotonManager : MonoBehaviourPunCallbacks
     private bool IsInTitleScene => SceneManager.GetActiveScene().name == "Title";
     private bool isLeaving = false;
 
-    private void Awake()
-    {
-        if (instance != null && instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
-        instance = this;
-    }
 
     void Start()
     {
@@ -130,7 +119,7 @@ public class PhotonManager : MonoBehaviourPunCallbacks
     }
 
     // ルームから退出する(タイトルシーンに戻る)
-    public void OnLeaveRoomAndDestroy()
+    public void OnClickBackButton()
     {
         PhotonNetwork.LeaveRoom();
     }

@@ -17,15 +17,14 @@ public class ImageView : MonoBehaviour
         marubatsu.gameObject.SetActive(false);
     }
 
-    public void SetText(string answer, string playerName)
-    {
-        answerText.text = answer;
-        playerNameText.text = playerName;
-    }
-
     public void SetAnswerText(string answer)
     {
         answerText.text = answer;
+    }
+
+    public void SetPlayerText(string playerName)
+    {
+        playerNameText.text = playerName;
     }
 
     public void SetMaruBatsu(bool isMaru)
