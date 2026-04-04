@@ -1,4 +1,3 @@
-using Unity.VisualScripting;
 using UnityEngine;
 
 public class PanelController : MonoBehaviour
@@ -28,8 +27,8 @@ public class PanelController : MonoBehaviour
         QuizSetting,
         CooperationSetting,
         EsiritoriSetting,
-        YonkomaSetting,
         DengonSetting,
+        Credit,
     }
 
 
@@ -64,11 +63,11 @@ public class PanelController : MonoBehaviour
             case Panels.EsiritoriSetting:
                 transform.localPosition = new Vector3(-5000, 6000, 0);
                 break;
-            case Panels.YonkomaSetting:
+            case Panels.DengonSetting:
                 transform.localPosition = new Vector3(-5000, 7500, 0);
                 break;
-            case Panels.DengonSetting:
-                transform.localPosition = new Vector3(-5000, 9000, 0);
+            case Panels.Credit:
+                transform.localPosition = new Vector3(-2500, -1500, 0);
                 break;
         }
     }
@@ -105,11 +104,11 @@ public class PanelController : MonoBehaviour
             case Panels.EsiritoriSetting:
                 transform.localPosition = new Vector3(-5000, 6000, 0);
                 break;
-            case Panels.YonkomaSetting:
+            case Panels.DengonSetting:
                 transform.localPosition = new Vector3(-5000, 7500, 0);
                 break;
-            case Panels.DengonSetting:
-                transform.localPosition = new Vector3(-5000, 9000, 0);
+            case Panels.Credit:
+                transform.localPosition = new Vector3(-2500, -1500, 0);
                 break;
         }
         if (currentPanel == Panels.Lobby)

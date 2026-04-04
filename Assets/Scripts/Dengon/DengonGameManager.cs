@@ -407,6 +407,11 @@ public class DengonGameManager : MonoBehaviourPunCallbacks
     {
         if (!isDrawingPhase || isGameFinished) return;
 
+        if (myDrawingReady == false)
+            SEManager.instance.PlayButtonClickSE();
+        else
+            SEManager.instance.PlayCancelButtonClickSE();
+
         myDrawingReady = !myDrawingReady;
         UpdateReadyButtonUI();
         photonView.RPC("SetDrawingReady", RpcTarget.MasterClient, PhotonNetwork.LocalPlayer.ActorNumber, myDrawingReady);
@@ -423,6 +428,11 @@ public class DengonGameManager : MonoBehaviourPunCallbacks
             string answer = dengonUIManager.GetAnswerText();
             if (string.IsNullOrWhiteSpace(answer)) return;
         }
+
+        if (myAnswerReady == false)
+            SEManager.instance.PlayButtonClickSE();
+        else
+            SEManager.instance.PlayCancelButtonClickSE();
 
         myAnswerReady = !myAnswerReady;
         UpdateReadyButtonUI();

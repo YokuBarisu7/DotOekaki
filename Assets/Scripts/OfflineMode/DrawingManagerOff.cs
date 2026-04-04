@@ -31,8 +31,8 @@ public class DrawingManagerOff : MonoBehaviour
     Texture2D texture;
     Color drawColor; // ペンの色
     Color32[] clearBuffer; // ClearCanvasで使用
-    Stack<Color[]> undoStack; // 元に戻すためのスタック
-    Stack<Color[]> redoStack; // やり直しのためのスタック
+    Stack<Color32[]> undoStack; // 元に戻すためのスタック
+    Stack<Color32[]> redoStack; // やり直しのためのスタック
     Vector2Int? lastPoint; // 前回の描画位置
     Vector2Int? startPoint; // 直線モードの始点
     Vector2Int startPixel; // 円モード、長方形モードの始点
@@ -74,14 +74,14 @@ public class DrawingManagerOff : MonoBehaviour
         }
 
         // スタックの初期生成
-        undoStack = new Stack<Color[]>();
-        redoStack = new Stack<Color[]>();
+        undoStack = new Stack<Color32[]>();
+        redoStack = new Stack<Color32[]>();
     }
 
     private void Start()
     {
         // ゲーム開始時は黒色ペンモード
-        drawColor = Color.black;
+        ChangeColor(Color.black);
         brushSize = 1;
         currentMode = ToolMode.Pen;
 
@@ -252,7 +252,7 @@ public class DrawingManagerOff : MonoBehaviour
         drawingPanel.texture = texture;
         undoStack.Clear();
         redoStack.Clear();
-        undoStack.Push(texture.GetPixels());
+        undoStack.Push(texture.GetPixels32());
         drawer = new DrawingUtils(texture, drawColor, brushSize);
         NotifyHistory();
         SetHasDrawing(false);
@@ -304,10 +304,28 @@ public class DrawingManagerOff : MonoBehaviour
 
     private void SaveUndo()
     {
-        undoStack.Push(texture.GetPixels()); // 現在の状態を保存
+        Color32[] currentPixels = texture.GetPixels32();
+
+        if (undoStack.Count > 0 && ArePixelsEqual(undoStack.Peek(), currentPixels)) return;
+
+        undoStack.Push(texture.GetPixels32()); // 現在の状態を保存
         redoStack.Clear(); // 新しく描画したらRedo履歴はクリア
         NotifyHistory();
         SetHasDrawing(ComputeHasDrawing());
+    }
+
+    private bool ArePixelsEqual(Color32[] a, Color32[] b)
+    { 
+        if(ReferenceEquals(a, b)) return true;
+        if (a == null || b == null) return false;
+        if (a.Length != b.Length) return false;
+
+        for (int i = 0; i < a.Length; i++) 
+        {
+            if (!a[i].Equals(b[i])) return false;
+        }
+
+        return true;
     }
 
     public void UndoButton() => Undo();
@@ -318,7 +336,7 @@ public class DrawingManagerOff : MonoBehaviour
         if (undoStackCount > 1)
         {
             redoStack.Push(undoStack.Pop());
-            texture.SetPixels(undoStack.Peek());
+            texture.SetPixels32(undoStack.Peek());
             texture.Apply();
             NotifyHistory();
             SetHasDrawing(ComputeHasDrawing());
@@ -329,7 +347,7 @@ public class DrawingManagerOff : MonoBehaviour
         if (redoStackCount > 0)
         {
             undoStack.Push(redoStack.Pop());
-            texture.SetPixels(undoStack.Peek());
+            texture.SetPixels32(undoStack.Peek());
             texture.Apply();
             NotifyHistory();
             SetHasDrawing(ComputeHasDrawing());
@@ -565,21 +583,30 @@ public class DrawingManagerOff : MonoBehaviour
 
     private void SaveBytes(byte[] bytes, string fileName)
     {
-        // Steam(Standalone)想定：ユーザーの「ピクチャ」フォルダに保存
+#if UNITY_WEBGL && !UNITY_EDITOR
+    DownloadFile(fileName, bytes);
+#else
+        // Steam(Standalone)：ユーザーの「ピクチャ」フォルダに保存
         string dir = Environment.GetFolderPath(Environment.SpecialFolder.MyPictures);
 
-        // フォルダが無い/取れない環境対策（念のため）
         if (string.IsNullOrEmpty(dir))
             dir = Application.persistentDataPath;
-
-        // サブフォルダを作って散らからないように（任意）
-        //string appDir = Path.Combine(dir, "DotOekaki");
-        //Directory.CreateDirectory(appDir);
 
         string path = MakeUniquePath(dir, fileName);
         File.WriteAllBytes(path, bytes);
         Debug.Log($"Saved: {path}");
+#endif
     }
+
+#if UNITY_WEBGL && !UNITY_EDITOR
+[System.Runtime.InteropServices.DllImport("__Internal")]
+private static extern void DownloadFile(string fileName, byte[] data, int length);
+
+private void DownloadFile(string fileName, byte[] bytes)
+{
+    DownloadFile(fileName, bytes, bytes.Length);
+}
+#endif
 
     private static string MakeUniquePath(string dir, string fileName)
     {

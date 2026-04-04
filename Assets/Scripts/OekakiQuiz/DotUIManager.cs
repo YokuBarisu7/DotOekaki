@@ -107,7 +107,7 @@ public class DotUIManager : MonoBehaviour
 
     private void OnColorChanged(Color color)
     {
-        color.a = 1;
+        if (color == Color.clear) color = new Color32(83, 83, 83, 255);
         currentColor.color = color;
     }
 
@@ -138,7 +138,7 @@ public class DotUIManager : MonoBehaviour
     public void OnClickAllClearButton() => dm.AllClearButton();
     public void OnClickColor(int index) => dm.ChangeColor(palette.colors[index]);
     public void OnClickToolButton(int index) => dm.ChangeMode((DrawingManager.ToolMode)index);
-    public void OnClickEraserButton() => dm.ChangeColor(new Color32(83, 83, 83, 0));
+    public void OnClickEraserButton() => dm.ChangeColor(Color.clear);
     public void ToggleIsDrawable() => dm.SetDrawable(!dm.IsDrawable);
     public void OnBrushSizeSliderChanged(float v) => dm.SetBrushSize((int)v);
 
