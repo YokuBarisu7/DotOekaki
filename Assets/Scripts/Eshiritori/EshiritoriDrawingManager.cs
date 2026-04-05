@@ -345,10 +345,28 @@ public class EshiritoriDrawingManager : MonoBehaviourPunCallbacks
 
     private void SaveUndo()
     {
+        Color32[] currentPixels = texture.GetPixels32();
+
+        if (undoStack.Count > 0 && ArePixelsEqual(undoStack.Peek(), currentPixels)) return;
+
         undoStack.Push(texture.GetPixels32()); // 現在の状態を保存
         redoStack.Clear(); // 新しく描画したらRedo履歴はクリア
         NotifyHistory();
         SetHasDrawing(ComputeHasDrawing());
+    }
+
+    private bool ArePixelsEqual(Color32[] a, Color32[] b)
+    {
+        if (ReferenceEquals(a, b)) return true;
+        if (a == null || b == null) return false;
+        if (a.Length != b.Length) return false;
+
+        for (int i = 0; i < a.Length; i++)
+        {
+            if (!a[i].Equals(b[i])) return false;
+        }
+
+        return true;
     }
 
     public void UndoButton()
