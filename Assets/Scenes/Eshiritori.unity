@@ -3997,6 +3997,7 @@ GameObject:
   - component: {fileID: 555640044}
   - component: {fileID: 555640043}
   - component: {fileID: 555640042}
+  - component: {fileID: 555640045}
   m_Layer: 5
   m_Name: InputField (Legacy)
   m_TagString: Untagged
@@ -4131,6 +4132,19 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 555640040}
   m_CullTransparentMesh: 1
+--- !u!114 &555640045
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 555640040}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cc33a39070010f94fb1c2dd721c1286d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WebGLSupport.WebGLInput
+  showHtmlElement: 0
 --- !u!1 &565290227
 GameObject:
   m_ObjectHideFlags: 0

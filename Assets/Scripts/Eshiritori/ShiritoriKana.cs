@@ -24,15 +24,27 @@ public static class ShiritoriKana
         var s = NormalizeWord(word);
         if (string.IsNullOrEmpty(s)) return '\0';
 
-        // 末尾から「ー」など無視文字を飛ばす
+        bool skippedTerminalN = false;
+
+        // 末尾から有効文字を探す
         for (int i = s.Length - 1; i >= 0; i--)
         {
             char c = s[i];
             if (IsIgnored(c)) continue;
 
-            // 促音・小書きなどをしりとり用に寄せる
-            return CanonicalKana(c);
+            char canon = CanonicalKana(c);
+            if (canon == '\0') continue;
+
+            // 一番最後の有効文字が「ん」なら、それは飛ばして一個前を見る
+            if (!skippedTerminalN && canon == 'ん')
+            {
+                skippedTerminalN = true;
+                continue;
+            }
+
+            return canon;
         }
+
         return '\0';
     }
 
